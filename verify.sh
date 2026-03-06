@@ -24,7 +24,6 @@ REQUIRED_FILES=(
   "src/applescript.ts"
   "src/provider.ts"
   "src/channel.ts"
-  "src/utils.ts"
   "README.md"
   "QUICKSTART.md"
   "PROJECT_SUMMARY.md"

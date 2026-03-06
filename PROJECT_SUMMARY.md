@@ -23,7 +23,7 @@ imessage-monterey/
     ├── provider.ts            # Database polling & message delivery
     ├── db.ts                  # SQLite database access
     ├── applescript.ts         # AppleScript message sender
-    └── utils.ts               # Utility functions
+    └── admin-commands.ts      # Admin command handlers
 ```
 
 ## Architecture
@@ -31,16 +31,23 @@ imessage-monterey/
 ### Core Components
 
 #### 1. Database Layer (`src/db.ts`)
-- Opens `~/Library/Messages/chat.db` in read-only mode
-- Queries for new messages using SQLite
+- Uses **Swift helper app** (`IMessageHelper.app`) for database access
+- Helper runs as separate process with Full Disk Access permission
+- Queries `~/Library/Messages/chat.db` via helper subprocess
 - Handles Apple's Cocoa timestamps (conversion to Unix)
-- Extracts attachments (optional)
-- Gets chat/group metadata
+- No direct SQLite dependency in TypeScript
 
 **Key Functions:**
-- `openMessagesDatabase()` - Opens DB with WAL mode
-- `queryRecentMessages()` - Polls for new messages
+- `runHelper()` - Spawns Swift helper, returns JSON output
+- `checkDatabaseAccess()` - Tests helper connectivity
+- `queryRecentMessages()` - Polls for new messages via helper
 - `toInboundMessage()` - Normalizes raw DB rows
+
+**Swift Helper Commands:**
+- `auth` - Test Automation permission
+- `check` - Test database access
+- `maxrowid` - Get current max ROWID
+- `query --since <id>` - Get messages after ROWID
 
 #### 2. Provider (`src/provider.ts`)
 - Polls database at configurable interval (default 10s)
@@ -75,6 +82,24 @@ imessage-monterey/
   - `gateway` - Start/stop lifecycle
   - `outbound` - Message sending
   - `setup` - Configuration wizard
+
+#### 5. Admin Commands (`src/admin-commands.ts`)
+- Handles special admin commands sent via iMessage
+- Provides runtime configuration and diagnostics
+- Supports session-based preferences for users
+- Commands are triggered by specific message patterns
+
+**Implemented Commands:**
+- `!prefs` / `!preferences` - Show current session preferences
+- `!history on|off` - Enable/disable conversation history
+- `!model <model>` - Change AI model for this session
+- `!web on|off` - Enable/disable web search access
+- `!status` - Show plugin status and health
+
+**Session Preferences Persistence:**
+- User preferences are stored per chat/session
+- Settings persist for the duration of the Gateway session
+- Includes model selection, web access toggle, history toggle
 
 ## Security Model
 
@@ -123,13 +148,16 @@ imessage-monterey/
 
 **Trade-off:** Requires Messages.app to be running
 
-### 3. Read-Only Database Access
-**Decision:** Open database in read-only mode
+### 3. Swift Helper for Database Access
+**Decision:** Use separate Swift helper app for database access
 
 **Rationale:**
-- Safety - can't corrupt Messages database
-- No need for write permissions
-- WAL mode allows concurrent reads
+- Full Disk Access requires signed app bundle
+- TypeScript/Node can't get FDA directly
+- Swift helper is small, focused, and testable
+- Easy to grant FDA to specific app
+
+**Trade-off:** Requires separate build step for helper
 
 **Limitation:** Can't mark messages as read reliably (macOS privacy feature)
 
@@ -223,14 +251,14 @@ cd ~/.openclaw/workspace/imessage-monterey
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `index.ts` | ~90 | Plugin entry point |
-| `src/types.ts` | ~110 | Type definitions |
-| `src/db.ts` | ~270 | Database access |
-| `src/applescript.ts` | ~280 | Message sending |
-| `src/provider.ts` | ~350 | Polling logic |
-| `src/channel.ts` | ~500 | Channel implementation |
-| `src/utils.ts` | ~180 | Utilities |
-| **Total** | **~1,780** | **Production-ready plugin** |
+| `index.ts` | 103 | Plugin entry point |
+| `src/types.ts` | 154 | Type definitions |
+| `src/db.ts` | 177 | Database access |
+| `src/applescript.ts` | 310 | Message sending |
+| `src/provider.ts` | 537 | Polling logic |
+| `src/channel.ts` | 560 | Channel implementation |
+| `src/admin-commands.ts` | 811 | Admin command handlers |
+| **Total** | **~2,652** | **Production-ready plugin** |
 
 ## Testing Checklist
 
@@ -333,5 +361,5 @@ cd ~/.openclaw/workspace/imessage-monterey
 
 **Status:** PRODUCTION READY  
 **Version:** 1.0.0  
-**Date:** 2026-02-20  
+**Date:** 2026-03-07  
 **Built by:** Claw (OpenClaw Agent)
