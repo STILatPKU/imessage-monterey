@@ -6,8 +6,9 @@
  */
 
 import { execSync } from "child_process";
-import { readFileSync, existsSync, writeFileSync } from "fs";
+import { readFileSync, existsSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
+import { randomUUID } from "crypto";
 
 export interface AdminCommandResult {
   ok: boolean;
@@ -55,14 +56,42 @@ function saveSessionPrefs(prefs: SessionPreferences): void {
 }
 
 /**
+ * Normalize a phone number by removing all non-digits
+ */
+function normalizePhoneNumber(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+/**
+ * Check if two phone numbers match, handling country code variations
+ * (+1 vs no +1, +86 138... vs 86138...)
+ */
+function phoneNumbersMatch(sender: string, admin: string): boolean {
+  const normalizedSender = normalizePhoneNumber(sender);
+  const normalizedAdmin = normalizePhoneNumber(admin);
+  
+  // Exact match
+  if (normalizedSender === normalizedAdmin) {
+    return true;
+  }
+  
+  // Try stripping leading country code (1 for US/Canada) and compare
+  // e.g., 11234567890 vs 1234567890
+  if (normalizedSender.length === normalizedAdmin.length + 1 && normalizedSender.startsWith("1")) {
+    return normalizedSender.slice(1) === normalizedAdmin;
+  }
+  if (normalizedAdmin.length === normalizedSender.length + 1 && normalizedAdmin.startsWith("1")) {
+    return normalizedSender === normalizedAdmin.slice(1);
+  }
+  
+  return false;
+}
+
+/**
  * Check if a sender is an administrator
  */
 export function isAdmin(senderId: string, adminList: string[]): boolean {
-  const normalizedSender = senderId.replace(/\D/g, ""); // Remove non-digits
-  return adminList.some(admin => {
-    const normalizedAdmin = admin.replace(/\D/g, "");
-    return normalizedSender === normalizedAdmin || normalizedSender.endsWith(normalizedAdmin);
-  });
+  return adminList.some(admin => phoneNumbersMatch(senderId, admin));
 }
 
 /**
@@ -145,7 +174,7 @@ export function executeAdminCommand(
       // ============ Session Lifecycle ============
       case "new":
       case "reset":
-        return cmdReset(args);
+        return cmdReset(args, senderId);
         
       case "abort":
         return cmdAbort();
@@ -501,23 +530,94 @@ function cmdDeliver(args: string[]): AdminCommandResult {
   };
 }
 
-function cmdReset(args: string[]): AdminCommandResult {
-  // Note: There's no CLI command to reset a session directly
-  // Sessions are identified by their channel/chat combination
-  // To "reset", we can only provide guidance
-  return {
-    ok: true,
-    response: `ℹ️ Session Reset
+function cmdReset(args: string[], senderId: string): AdminCommandResult {
+  try {
+    const home = process.env.HOME || "";
+    const sessionStorePath = join(home, ".openclaw", "agents", "main", "sessions", "sessions.json");
+    const processedIdsPath = join(home, ".openclaw", `imessage-monterey-default.processed`);
 
-To reset this iMessage session:
-1. The session will naturally reset when context limits are reached
-2. Or restart the gateway: /restart
-3. Or start a new conversation from your phone
+    // 1. Reset the gateway session by updating the session store
+    let sessionReset = false;
+    let sessionId = "";
 
-Sessions are tied to your phone number and channel.
-There's no direct reset command available via CLI.`,
-    isAdmin: true,
-  };
+    if (existsSync(sessionStorePath)) {
+      try {
+        const store = JSON.parse(readFileSync(sessionStorePath, "utf-8"));
+        const sessionKey = `imessage-monterey:${senderId}:session:default`;
+
+        // Find and update the session entry
+        for (const [key, entry] of Object.entries(store)) {
+          const sessionEntry = entry as any;
+          // Match on either exact key or the user field
+          if (key === sessionKey || sessionEntry.user === sessionKey) {
+            // Generate a new session ID (this clears the gateway context)
+            sessionId = randomUUID();
+            sessionEntry.sessionId = sessionId;
+            sessionEntry.updatedAt = Date.now();
+            sessionReset = true;
+
+            // Update the store
+            store[key] = sessionEntry;
+            break;
+          }
+        }
+
+        // If session was reset, write back to store
+        if (sessionReset) {
+          writeFileSync(sessionStorePath, JSON.stringify(store, null, 2), "utf-8");
+        }
+      } catch (error: any) {
+        // Log but don't fail - we'll try the next method
+        console.error(`Failed to reset session store: ${error.message}`);
+      }
+    }
+
+    // 2. Clear processed message IDs (allows reprocessing of messages)
+    let processedIdsCleared = false;
+    if (existsSync(processedIdsPath)) {
+      try {
+        unlinkSync(processedIdsPath);
+        processedIdsCleared = true;
+      } catch (error: any) {
+        console.error(`Failed to clear processed IDs: ${error.message}`);
+      }
+    }
+
+    // 3. Clear session preferences
+    let prefsCleared = false;
+    try {
+      saveSessionPrefs({});
+      prefsCleared = true;
+    } catch (error: any) {
+      console.error(`Failed to clear preferences: ${error.message}`);
+    }
+
+    // Build response
+    const actions: string[] = [];
+    if (sessionReset) actions.push("Gateway session reset");
+    if (processedIdsCleared) actions.push("Message history cleared");
+    if (prefsCleared) actions.push("Preferences reset");
+
+    if (actions.length === 0) {
+      return {
+        ok: false,
+        response: `⚠️ No active session found to reset.\n\nThis may be your first message. A session will be created automatically when you send your next message.`,
+        isAdmin: true,
+      };
+    }
+
+    return {
+      ok: true,
+      response: `✅ Session Reset Complete\n\nActions performed:\n${actions.map(a => `• ${a}`).join("\n")}\n\nYour conversation context has been cleared. The next message will start a fresh session.`,
+      isAdmin: true,
+    };
+  } catch (error: any) {
+    return {
+      ok: false,
+      response: `❌ Reset failed: ${error.message}`,
+      isAdmin: true,
+    };
+  }
 }
 
 function cmdAbort(): AdminCommandResult {

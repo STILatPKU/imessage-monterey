@@ -98,7 +98,17 @@ export async function sendTextMessage(
 
 /**
  * Send a message with an attachment via AppleScript
- * Note: Attachments require file paths accessible to Messages.app
+ * 
+ * NOT SUPPORTED: Messages.app AppleScript dictionary does NOT expose any 
+ * command for sending attachments. The 'send' command only accepts text strings.
+ * 
+ * Alternative approaches that could work (but are unreliable):
+ * 1. GUI Automation via System Events - requires Accessibility permissions, fragile
+ * 2. Shortcuts app - requires user to set up a Shortcut, then call via AppleScript
+ * 3. Drag-and-drop to Messages window - not automatable
+ * 
+ * For now, media sending is disabled. Users wanting media support should use
+ * a different method or a macOS version with proper API support.
  */
 export async function sendMediaMessage(
   recipient: string,
@@ -106,51 +116,10 @@ export async function sendMediaMessage(
   mediaPath: string,
   chatGuid: string | null = null
 ): Promise<SendResult> {
-  // For media, we need to use a different approach
-  // Messages.app doesn't have a direct AppleScript API for sending attachments
-  // We need to use the attachment file path approach
-  
-  const escapedText = escapeAppleScriptString(text);
-  const escapedRecipient = escapeAppleScriptString(recipient);
-  const escapedMediaPath = escapeAppleScriptString(mediaPath);
-  
-  // POSIX file path for attachment
-  const script = `
-    tell application "Messages"
-      try
-        set theAttachment to POSIX file "${escapedMediaPath}"
-        set targetService to 1st service whose service type = iMessage
-        set targetBuddy to buddy "${escapedRecipient}" of targetService
-        send theAttachment to targetBuddy
-        ${text ? `send "${escapedText}" to targetBuddy` : ""}
-        return "ok"
-      on error errMsg
-        return "error: " & errMsg
-      end try
-    end tell
-  `;
-  
-  try {
-    const { stdout } = await execAsync(`osascript -e '${script}'`, {
-      timeout: 30000,
-    });
-    
-    const result = stdout.trim();
-    
-    if (result.startsWith("error:")) {
-      return {
-        ok: false,
-        error: result.slice(6).trim(),
-      };
-    }
-    
-    return { ok: true };
-  } catch (error: any) {
-    return {
-      ok: false,
-      error: error.message || String(error),
-    };
-  }
+  return {
+    ok: false,
+    error: "Media sending is not supported via AppleScript on macOS Monterey. Messages.app does not expose attachment sending in its AppleScript dictionary.",
+  };
 }
 
 /**

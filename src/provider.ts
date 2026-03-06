@@ -514,11 +514,13 @@ export function createOutboundSender(
     
     try {
       if (msg.mediaUrl) {
-        const result = await sendMediaMessage(msg.to, msg.text, msg.mediaUrl, msg.chatGuid || null);
-        if (!result.ok) {
-          log.error(`Failed to send media: ${result.error}`);
-        }
-        return { ...result, messageId: result.ok ? generateMessageId() : undefined };
+        // Media sending is not supported via AppleScript on Monterey
+        // Messages.app doesn't expose attachment sending in its AppleScript dictionary
+        log.error("Media sending is not supported on macOS Monterey");
+        return { 
+          ok: false, 
+          error: "Media sending is not supported on macOS Monterey. Use text messages instead." 
+        };
       } else {
         const result = await sendChunkedMessage(msg.to, msg.text, {
           chunkLimit: textChunkLimit,

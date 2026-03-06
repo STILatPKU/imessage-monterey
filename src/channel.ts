@@ -80,7 +80,7 @@ const meta: ChannelMeta = {
  */
 const capabilities: ChannelCapabilities = {
   chatTypes: ["direct", "group"],
-  media: true,
+  media: false, // Not supported - Messages.app AppleScript doesn't expose attachment sending
   reactions: false, // Not supported via AppleScript reliably
   edit: false,
   unsend: false,
@@ -172,11 +172,11 @@ const config: ChannelConfigAdapter<ResolvedIMessageMontereyAccount> = {
     return DEFAULT_ACCOUNT_ID;
   },
 
-  isConfigured: (account: ResolvedIMessageMontereyAccount): boolean => {
+  isConfigured: (account: ResolvedIMessageMontereyAccount, cfg: OpenClawConfig): boolean => {
     return account.configured;
   },
 
-  describeAccount: (account: ResolvedIMessageMontereyAccount): ChannelAccountSnapshot => ({
+  describeAccount: (account: ResolvedIMessageMontereyAccount, cfg: OpenClawConfig): ChannelAccountSnapshot => ({
     accountId: account.accountId,
     name: account.name,
     enabled: account.enabled,
@@ -194,7 +194,11 @@ const config: ChannelConfigAdapter<ResolvedIMessageMontereyAccount> = {
     return account.config.allowFrom.map((s) => String(s));
   },
 
-  formatAllowFrom: ({ allowFrom }: { allowFrom: (string | number)[] }): string[] => {
+  formatAllowFrom: ({ cfg, accountId, allowFrom }: {
+    cfg: OpenClawConfig;
+    accountId?: string | null;
+    allowFrom: Array<string | number>;
+  }): string[] => {
     return allowFrom.map((s) => String(s).trim()).filter(Boolean);
   },
 };
@@ -263,12 +267,16 @@ const security: ChannelSecurityAdapter<ResolvedIMessageMontereyAccount> = {
 const status: ChannelStatusAdapter<ResolvedIMessageMontereyAccount> = {
   buildAccountSnapshot: ({
     account,
+    cfg,
+    runtime,
     probe,
+    audit,
   }: {
     account: ResolvedIMessageMontereyAccount;
     cfg: OpenClawConfig;
     runtime?: ChannelAccountSnapshot;
     probe?: unknown;
+    audit?: unknown;
   }): ChannelAccountSnapshot => {
     // Use internal state if probe is not our runtime state type
     const internalState = (probe as AccountRuntimeState | undefined) || getRuntimeState(account.accountId);
@@ -286,8 +294,10 @@ const status: ChannelStatusAdapter<ResolvedIMessageMontereyAccount> = {
   },
 
   resolveAccountState: ({
-    enabled,
+    account,
+    cfg,
     configured,
+    enabled,
   }: {
     account: ResolvedIMessageMontereyAccount;
     cfg: OpenClawConfig;
@@ -447,38 +457,11 @@ const outbound: ChannelOutboundAdapter = {
     };
   },
 
-  sendMedia: async ({
-    cfg,
-    to,
-    text,
-    mediaUrl,
-    accountId,
-  }: {
-    cfg: OpenClawConfig;
-    to: string;
-    text: string;
-    mediaUrl?: string;
-    accountId?: string | null;
-    deps?: any;
-  }): Promise<OutboundDeliveryResult> => {
-    const account = config.resolveAccount(cfg, accountId);
-    const log = {
-      info: console.log,
-      error: console.error,
-    };
-    
-    const sender = createOutboundSender(account, log);
-    const result = await sender({ to, text, mediaUrl: mediaUrl || undefined });
-    
-    if (!result.ok) {
-      throw new Error(result.error || "Failed to send media message");
-    }
-    
-    return {
-      channel: "imessage-monterey",
-      messageId: result.messageId || `imsg-${Date.now()}`,
-    };
-  },
+  // Media sending NOT supported: Messages.app AppleScript dictionary does not expose
+  // any command to send attachments. The only alternatives are:
+  // 1. GUI Automation via System Events (unreliable, requires Accessibility permissions)
+  // 2. Shortcuts app automation (requires user setup)
+  // 3. Use a different messaging method for media
 };
 
 // ============================================================================
