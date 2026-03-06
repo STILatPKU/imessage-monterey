@@ -531,93 +531,103 @@ function cmdDeliver(args: string[]): AdminCommandResult {
 }
 
 function cmdReset(args: string[], senderId: string): AdminCommandResult {
-  try {
-    const home = process.env.HOME || "";
-    const sessionStorePath = join(home, ".openclaw", "agents", "main", "sessions", "sessions.json");
-    const processedIdsPath = join(home, ".openclaw", `imessage-monterey-default.processed`);
+  const home = process.env.HOME || "";
+  const sessionStorePath = join(home, ".openclaw", "agents", "main", "sessions", "sessions.json");
+  const processedIdsPath = join(home, ".openclaw", `imessage-monterey-default.processed`);
 
-    // 1. Reset the gateway session by updating the session store
-    let sessionReset = false;
-    let sessionId = "";
+  // Track results
+  const actions: string[] = [];
+  const errors: string[] = [];
 
-    if (existsSync(sessionStorePath)) {
-      try {
-        const store = JSON.parse(readFileSync(sessionStorePath, "utf-8"));
-        const sessionKey = `imessage-monterey:${senderId}:session:default`;
+  // Normalize sender for matching
+  const normalizedSender = normalizePhoneNumber(senderId);
 
-        // Find and update the session entry
-        for (const [key, entry] of Object.entries(store)) {
-          const sessionEntry = entry as any;
-          // Match on either exact key or the user field
-          if (key === sessionKey || sessionEntry.user === sessionKey) {
-            // Generate a new session ID (this clears the gateway context)
-            sessionId = randomUUID();
-            sessionEntry.sessionId = sessionId;
-            sessionEntry.updatedAt = Date.now();
-            sessionReset = true;
+  // 1. Find all session keys for this sender
+  let sessionsReset = 0;
+  let sessionsFailed = 0;
+  const sessionKeys: string[] = [];
 
-            // Update the store
-            store[key] = sessionEntry;
-            break;
-          }
-        }
-
-        // If session was reset, write back to store
-        if (sessionReset) {
-          writeFileSync(sessionStorePath, JSON.stringify(store, null, 2), "utf-8");
-        }
-      } catch (error: any) {
-        // Log but don't fail - we'll try the next method
-        console.error(`Failed to reset session store: ${error.message}`);
-      }
-    }
-
-    // 2. Clear processed message IDs (allows reprocessing of messages)
-    let processedIdsCleared = false;
-    if (existsSync(processedIdsPath)) {
-      try {
-        unlinkSync(processedIdsPath);
-        processedIdsCleared = true;
-      } catch (error: any) {
-        console.error(`Failed to clear processed IDs: ${error.message}`);
-      }
-    }
-
-    // 3. Clear session preferences
-    let prefsCleared = false;
+  if (existsSync(sessionStorePath)) {
     try {
-      saveSessionPrefs({});
-      prefsCleared = true;
+      const store = JSON.parse(readFileSync(sessionStorePath, "utf-8"));
+
+      // Find all session keys matching this sender
+      for (const key of Object.keys(store)) {
+        const keyMatches = key.includes(senderId) || key.includes(normalizedSender);
+        const entry = store[key] as any;
+        const userMatches = entry?.user && (
+          entry.user.includes(senderId) || entry.user.includes(normalizedSender)
+        );
+
+        if (keyMatches || userMatches) {
+          sessionKeys.push(key);
+        }
+      }
+
+      // 2. Call gateway sessions.reset for each session via CLI
+      // This is the SAME method the TUI uses for /reset command
+      for (const key of sessionKeys) {
+        try {
+          execSync(`openclaw gateway call sessions.reset --params '${JSON.stringify({ key })}' 2>&1`, {
+            encoding: "utf-8",
+            timeout: 15000,
+          });
+          sessionsReset++;
+        } catch (e: any) {
+          sessionsFailed++;
+          errors.push(`Failed to reset ${key}: ${e.message}`);
+        }
+      }
     } catch (error: any) {
-      console.error(`Failed to clear preferences: ${error.message}`);
+      errors.push(`Session store read error: ${error.message}`);
     }
+  }
 
-    // Build response
-    const actions: string[] = [];
-    if (sessionReset) actions.push("Gateway session reset");
-    if (processedIdsCleared) actions.push("Message history cleared");
-    if (prefsCleared) actions.push("Preferences reset");
-
-    if (actions.length === 0) {
-      return {
-        ok: false,
-        response: `⚠️ No active session found to reset.\n\nThis may be your first message. A session will be created automatically when you send your next message.`,
-        isAdmin: true,
-      };
+  // 3. Clear processed message IDs (allows reprocessing of messages)
+  if (existsSync(processedIdsPath)) {
+    try {
+      unlinkSync(processedIdsPath);
+      actions.push("Message history cleared");
+    } catch (error: any) {
+      errors.push(`Failed to clear processed IDs: ${error.message}`);
     }
+  }
 
-    return {
-      ok: true,
-      response: `✅ Session Reset Complete\n\nActions performed:\n${actions.map(a => `• ${a}`).join("\n")}\n\nYour conversation context has been cleared. The next message will start a fresh session.`,
-      isAdmin: true,
-    };
+  // 4. Clear session preferences
+  try {
+    saveSessionPrefs({});
+    actions.push("Preferences reset");
   } catch (error: any) {
+    errors.push(`Failed to clear preferences: ${error.message}`);
+  }
+
+  // Build response
+  if (sessionsReset > 0) {
+    actions.push(`Gateway session${sessionsReset > 1 ? 's' : ''} reset via API (${sessionsReset})`);
+  }
+
+  if (sessionKeys.length === 0 && errors.length === 0) {
     return {
       ok: false,
-      response: `❌ Reset failed: ${error.message}`,
+      response: `⚠️ No active session found to reset.\n\nThis may be your first message. A session will be created automatically when you send your next message.`,
       isAdmin: true,
     };
   }
+
+  let response = `✅ Session Reset Complete\n\n`;
+  if (actions.length > 0) {
+    response += `Actions performed:\n${actions.map(a => `• ${a}`).join("\n")}\n\n`;
+  }
+  if (errors.length > 0) {
+    response += `⚠️ Errors:\n${errors.map(e => `• ${e}`).join("\n")}\n\n`;
+  }
+  response += `Your conversation context has been cleared. The next message will start a fresh session.`;
+
+  return {
+    ok: true,
+    response,
+    isAdmin: true,
+  };
 }
 
 function cmdAbort(): AdminCommandResult {
