@@ -56,8 +56,6 @@ const DEFAULT_CONFIG: Required<IMessageMontereyAccountConfig> = {
   groupPolicy: "allowlist",
   groupAllowFrom: [],
   textChunkLimit: 4000,
-  mediaMaxMb: 16,
-  includeAttachments: true,
   adminList: [],
 };
 

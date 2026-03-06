@@ -42,12 +42,6 @@
       "_comment_textChunkLimit": "Maximum characters per message chunk (iMessage has limits)",
       "textChunkLimit": 4000,
       
-      "_comment_mediaMaxMb": "Maximum media file size in MB",
-      "mediaMaxMb": 16,
-      
-      "_comment_includeAttachments": "Whether to include message attachments in context",
-      "includeAttachments": true,
-      
       "_comment_accounts": "For multi-account setups (rarely needed for iMessage)",
       "accounts": {
         "personal": {

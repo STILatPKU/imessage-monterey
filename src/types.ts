@@ -76,8 +76,6 @@ export interface IMessageMontereyAccountConfig {
   groupPolicy?: "open" | "allowlist" | "disabled";
   groupAllowFrom?: string[];
   textChunkLimit?: number;
-  mediaMaxMb?: number;
-  includeAttachments?: boolean;
   adminList?: string[];  // List of admin phone numbers who can use slash commands
 }
 
