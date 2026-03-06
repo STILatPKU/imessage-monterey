@@ -80,15 +80,11 @@ const plugin = {
         description: "Maximum characters per message chunk",
         default: 4000,
       },
-      mediaMaxMb: {
-        type: "number",
-        description: "Maximum media file size in MB",
-        default: 16,
-      },
-      includeAttachments: {
-        type: "boolean",
-        description: "Include message attachments",
-        default: true,
+      adminList: {
+        type: "array",
+        items: { type: "string" },
+        description: "List of admin phone numbers who can use slash commands",
+        default: [],
       },
     },
   },

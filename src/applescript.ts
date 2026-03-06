@@ -184,6 +184,36 @@ export async function checkMessagesApp(): Promise<{
 }
 
 /**
+ * Force-split a chunk that exceeds the limit
+ * Tries word boundaries first, then falls back to character split
+ */
+function forceSplitChunk(chunk: string, limit: number): string[] {
+  const result: string[] = [];
+  let remaining = chunk;
+  
+  while (remaining.length > limit) {
+    // Try to find a word boundary near the limit
+    let splitPos = limit;
+    
+    // Look backwards for a space (word boundary)
+    const spacePos = remaining.lastIndexOf(' ', limit);
+    if (spacePos > limit * 0.5) {
+      // Only use word boundary if it's not too far back (preserve at least half the limit)
+      splitPos = spacePos;
+    }
+    
+    result.push(remaining.slice(0, splitPos).trim());
+    remaining = remaining.slice(splitPos).trim();
+  }
+  
+  if (remaining.length > 0) {
+    result.push(remaining);
+  }
+  
+  return result;
+}
+
+/**
  * Chunk text for iMessage sending
  * Splits at paragraph boundaries (blank lines) or forced chunks
  */
@@ -239,7 +269,19 @@ export function chunkText(
     chunks.push(currentChunk.trim());
   }
   
-  return chunks.length > 0 ? chunks : [text.slice(0, limit)];
+  // FINAL SAFEGUARD: Force-split any chunks that still exceed the limit
+  // This handles cases where a single sentence has no punctuation,
+  // or any edge case that slipped through
+  const finalChunks: string[] = [];
+  for (const chunk of chunks) {
+    if (chunk.length > limit) {
+      finalChunks.push(...forceSplitChunk(chunk, limit));
+    } else {
+      finalChunks.push(chunk);
+    }
+  }
+  
+  return finalChunks.length > 0 ? finalChunks : [text.slice(0, limit)];
 }
 
 /**

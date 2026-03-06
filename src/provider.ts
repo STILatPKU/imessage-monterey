@@ -31,41 +31,11 @@ import type {
 } from "./types.js";
 
 /**
- * Tool call structure from OpenAI-compatible API
- */
-interface ToolCallFunction {
-  name: string;
-  arguments: string;
-}
-
-interface ToolCall {
-  id: string;
-  type: "function";
-  function: ToolCallFunction;
-}
-
-/**
- * Tool result structure
- */
-interface ToolResult {
-  status: string;
-  tool: string;
-  message: string;
-  error?: string;
-}
-
-/**
- * Chat message structure for multi-turn conversations
- */
-interface ChatMessage {
-  role: "user" | "assistant" | "tool" | "system";
-  content?: string;
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
-}
-
-/**
  * Gateway response structure
+ * 
+ * Note: The Gateway's /v1/chat/completions endpoint runs the full agent loop
+ * internally, including tool execution. It only returns the final text response
+ * with finish_reason: "stop". Tool calls are never returned to the caller.
  */
 interface GatewayResponse {
   id?: string;
@@ -75,7 +45,6 @@ interface GatewayResponse {
     message?: {
       role?: string;
       content?: string;
-      tool_calls?: ToolCall[];
     };
     finish_reason?: string;
   }>;
@@ -83,6 +52,10 @@ interface GatewayResponse {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+  };
+  error?: {
+    message?: string;
+    type?: string;
   };
 }
 
@@ -395,8 +368,12 @@ export class IMessageMontereyProvider {
   }
   
   /**
-   * Deliver message to gateway via HTTP API (like iMessageBridge does)
-   * Handles tool_calls by continuing the conversation with tool results
+   * Deliver message to gateway via HTTP API.
+   * 
+   * The Gateway's /v1/chat/completions endpoint runs the full agent loop
+   * internally, including tool execution. It returns only the final text
+   * response with finish_reason: "stop". We don't need to handle tool calls
+   * here - the Gateway handles everything.
    */
   private async deliverViaHttp(msg: InboundMessage): Promise<void> {
     const model = process.env.OPENCLAW_MODEL || "zai/glm-5";
@@ -405,93 +382,50 @@ export class IMessageMontereyProvider {
     // Build proper session key with conversation context
     const sessionKey = this.buildSessionKey(msg);
     
-    // Build initial conversation with user message
-    const messages: ChatMessage[] = [
-      {
-        role: "user",
-        content: msg.text,
-      }
-    ];
-    
-    // Tool call loop - continue until we get a text response or hit max iterations
-    const maxToolIterations = 10;
-    let iteration = 0;
-    
-    while (iteration < maxToolIterations) {
-      iteration++;
-      
-      const payload = {
-        model,
-        messages,
-        stream: false,
-      };
-      
-      try {
-        const response = await this.sendGatewayRequest(payload, agentId, sessionKey);
-        
-        // Check if we got a text response
-        if (response.choices?.[0]?.message?.content) {
-          const content = response.choices[0].message.content;
-          
-          // Send response via AppleScript
-          const result = await sendChunkedMessage(
-            msg.senderId,
-            content,
-            { chatGuid: msg.chatGuid }
-          );
-          
-          if (!result.ok) {
-            this.context.log.error(`Failed to send response: ${result.error}`);
-          } else {
-            this.context.log.debug(`Response sent to ${msg.senderId}`);
-          }
-          return;
+    const payload = {
+      model,
+      messages: [
+        {
+          role: "user",
+          content: msg.text,
         }
-        
-        // Check for tool calls
-        if (response.choices?.[0]?.finish_reason === "tool_calls") {
-          const toolCalls = response.choices?.[0]?.message?.tool_calls;
-          const choice = response.choices[0];
-          
-          if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0 && choice) {
-            this.context.log.debug(`Received ${toolCalls.length} tool calls, processing...`);
-            
-            // Add assistant message with tool calls to conversation
-            messages.push({
-              role: "assistant",
-              content: choice.message?.content || "",
-              tool_calls: toolCalls,
-            });
-            
-            // Add tool results for each tool call
-            // Note: We can't execute tools directly, so we provide placeholder results
-            // The gateway's agent will handle actual tool execution on the next iteration
-            for (const tc of toolCalls) {
-              const toolResult = this.handleToolCall(tc);
-              messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                content: JSON.stringify(toolResult),
-              });
-            }
-            
-            // Continue loop to get next response
-            continue;
-          }
-        }
-        
-        // No content and no tool calls - log warning and exit
-        this.context.log.warn(`Unexpected response format: ${JSON.stringify(response)}`);
+      ],
+      stream: false,
+    };
+    
+    try {
+      const response = await this.sendGatewayRequest(payload, agentId, sessionKey);
+      
+      // Check for error response
+      if (response.error) {
+        this.context.log.error(`Gateway returned error: ${response.error.message || JSON.stringify(response.error)}`);
         return;
-        
-      } catch (error: any) {
-        this.context.log.error(`Gateway request failed: ${error.message}`);
-        throw error;
       }
+      
+      // Extract text content from response
+      const content = response.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        this.context.log.warn(`No content in gateway response: ${JSON.stringify(response)}`);
+        return;
+      }
+      
+      // Send response via AppleScript
+      const result = await sendChunkedMessage(
+        msg.senderId,
+        content,
+        { chatGuid: msg.chatGuid }
+      );
+      
+      if (!result.ok) {
+        this.context.log.error(`Failed to send response: ${result.error}`);
+      } else {
+        this.context.log.debug(`Response sent to ${msg.senderId}`);
+      }
+    } catch (error: any) {
+      this.context.log.error(`Gateway request failed: ${error.message}`);
+      throw error;
     }
-    
-    // Hit max iterations - log error
-    this.context.log.error(`Tool call loop exceeded maximum iterations (${maxToolIterations})`);
   }
   
   /**
@@ -543,25 +477,6 @@ export class IMessageMontereyProvider {
       req.write(body);
       req.end();
     });
-  }
-  
-  /**
-   * Handle a tool call by returning an appropriate result
-   * For client tools that the provider can't execute, we delegate back to the gateway
-   */
-  private handleToolCall(toolCall: ToolCall): ToolResult {
-    const { log } = this.context;
-    const name = toolCall.function?.name || "unknown";
-    
-    log.debug(`Processing tool call: ${name}`);
-    
-    // For most tools, we return a result that indicates the tool should be handled by the agent
-    // The gateway's agent will re-process and execute the tool
-    return {
-      status: "delegated",
-      tool: name,
-      message: "Tool execution delegated to agent runtime",
-    };
   }
   
   /**
