@@ -105,7 +105,7 @@ npm run build
 
 5. **Deploy to OpenClaw:**
 ```bash
-cp -r dist/src ~/.openclaw/extensions/imessage-monterey/dist/
+cp -r dist/* ~/.openclaw/extensions/imessage-monterey/dist/
 cp index.ts ~/.openclaw/extensions/imessage-monterey/
 ```
 
@@ -207,7 +207,7 @@ Special characters (quotes, newlines, etc.) can break AppleScript. The plugin us
 | Installed plugin | `~/.openclaw/extensions/imessage-monterey/` |
 | Swift helper | `~/Applications/IMessageHelper.app` |
 | Session preferences | `~/.openclaw/imessage-monterey-prefs.json` |
-| Processed IDs cache | `~/.openclaw/imessage-monterey-default.processed` |
+| Processed IDs cache | `~/.openclaw/imessage-monterey-{accountId}.processed` (accountId is "default" or custom) |
 
 ## Development
 
@@ -222,7 +222,7 @@ cp imessage-helper ~/Applications/IMessageHelper.app/Contents/MacOS/
 ```bash
 cd ~/.openclaw/workspace/imessage-monterey
 npm run build
-cp -r dist/src ~/.openclaw/extensions/imessage-monterey/dist/
+cp -r dist/* ~/.openclaw/extensions/imessage-monterey/dist/
 openclaw gateway restart
 ```
 

@@ -50,8 +50,8 @@ The plugin needs Full Disk Access to read the Messages database:
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Click **Full Disk Access** in the left sidebar
 3. Click the **lock** icon and authenticate
-4. Click **+** and add **Terminal.app** (or iTerm2, etc.)
-5. **Restart your terminal**
+4. Click **+** and add **IMessageHelper.app** from `~/Applications/`
+5. **Restart your terminal** (if needed)
 
 ### Step 4: Restart OpenClaw
 
@@ -136,9 +136,9 @@ Should show: `imessage-monterey`
 
 ### "Messages not being detected"
 
-1. Check the database is accessible:
+1. Check the helper can access the database (requires Full Disk Access on IMessageHelper.app):
 ```bash
-sqlite3 ~/Library/Messages/chat.db "SELECT COUNT(*) FROM message"
+~/Applications/IMessageHelper.app/Contents/MacOS/imessage-helper check
 ```
 
 2. Check OpenClaw logs:

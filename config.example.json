@@ -17,6 +17,11 @@
       "_comment_requirePrefixForAllowlist": "If true, even allowlisted senders must use the prefix",
       "requirePrefixForAllowlist": false,
       
+      "_comment_adminList": "List of admin phone numbers (slash command access). Defaults to allowFrom if not set.",
+      "adminList": [
+        "+1234567890"
+      ],
+      
       "_comment_dmPolicy": "Direct message security: 'open', 'pairing', 'allowlist', or 'disabled'",
       "dmPolicy": "allowlist",
       

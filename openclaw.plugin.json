@@ -17,6 +17,34 @@
         "type": "string",
         "description": "Path to Messages database (chat.db)"
       },
+      "dmPolicy": {
+        "type": "string",
+        "description": "Direct message policy: open, pairing, allowlist, or disabled",
+        "default": "pairing"
+      },
+      "allowFrom": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of allowed phone numbers or emails for DMs",
+        "default": []
+      },
+      "groupPolicy": {
+        "type": "string",
+        "description": "Group message policy: open, allowlist, or disabled",
+        "default": "allowlist"
+      },
+      "groupAllowFrom": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of allowed senders in group chats",
+        "default": []
+      },
+      "adminList": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of admin phone numbers (slash command access)",
+        "default": []
+      },
       "prefix": {
         "type": "string",
         "description": "Command prefix (e.g., '!claw')",
@@ -36,6 +64,11 @@
         "type": "number",
         "description": "Maximum media file size in MB",
         "default": 16
+      },
+      "includeAttachments": {
+        "type": "boolean",
+        "description": "Whether to include message attachments in context",
+        "default": true
       }
     }
   },
@@ -47,6 +80,26 @@
     "dbPath": {
       "label": "Messages Database Path",
       "placeholder": "~/Library/Messages/chat.db"
+    },
+    "dmPolicy": {
+      "label": "DM Policy",
+      "help": "Direct message access policy"
+    },
+    "allowFrom": {
+      "label": "Allowed DM Senders",
+      "help": "Phone numbers or emails for DMs"
+    },
+    "groupPolicy": {
+      "label": "Group Policy",
+      "help": "Group message access policy"
+    },
+    "groupAllowFrom": {
+      "label": "Allowed Group Senders",
+      "help": "Phone numbers allowed in groups"
+    },
+    "adminList": {
+      "label": "Admin List",
+      "help": "Phone numbers with slash command access"
     },
     "prefix": {
       "label": "Command Prefix",
