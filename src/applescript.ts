@@ -39,8 +39,30 @@ export async function sendTextMessage(
   const escapedText = escapeAppleScriptString(text);
   const escapedRecipient = escapeAppleScriptString(recipient);
   
-  // Build AppleScript - use buddy approach which is more reliable
-  const script = `
+  // Determine if this is a group chat
+  // Group GUIDs have semicolons but NOT "-;" (which indicates a DM)
+  // DM format: iMessage;-;+phone
+  // Group format: iMessage;+phone1;+phone2;...
+  const isGroup = chatGuid && chatGuid.includes(";") && !chatGuid.includes("-;");
+  
+  let script: string;
+  
+  if (isGroup && chatGuid) {
+    // Group chat - use chat id for sending
+    const escapedChatGuid = escapeAppleScriptString(chatGuid);
+    script = `
+      tell application "Messages"
+        try
+          send "${escapedText}" to chat id "${escapedChatGuid}"
+          return "ok"
+        on error errMsg
+          return "error: " & errMsg
+        end try
+      end tell
+    `;
+  } else {
+    // DM - use buddy approach
+    script = `
       tell application "Messages"
         try
           set targetService to 1st service whose service type = iMessage
@@ -52,6 +74,7 @@ export async function sendTextMessage(
         end try
       end tell
     `;
+  }
   
   // Write to temp file to avoid shell escaping issues
   const tmpDir = tmpdir();

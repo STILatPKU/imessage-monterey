@@ -12,7 +12,7 @@ A native OpenClaw channel plugin for iMessage on macOS 12 Monterey.
 | Feature | Supported |
 |---------|-----------|
 | Direct Messages (DMs) | ✅ |
-| Group Chats | ✅ |
+| Group Chats | ✅ (fixed in v1.0.3) |
 | Text Messages | ✅ |
 | Tool/Function Calling | ✅ |
 | Media Attachments | ❌ |

@@ -2,6 +2,12 @@
 
 All notable changes to the iMessage Monterey plugin.
 
+## [1.0.3] - 2026-03-07
+
+### Fixed
+- Group chat sending now uses `send to chat id` for proper group message delivery
+- `extractCommand()` now checks `groupAllowFrom` for group messages (previously only checked `allowFrom`)
+
 ## [1.0.2] - 2026-03-07
 
 ### Changed

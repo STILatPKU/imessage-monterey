@@ -535,9 +535,11 @@ export class IMessageMontereyProvider {
    */
   private extractCommand(msg: InboundMessage): string | null {
     const { account } = this.context;
-    const { prefix, requirePrefixForAllowlist, allowFrom, dmPolicy } = account.config;
+    const { prefix, requirePrefixForAllowlist, allowFrom, groupAllowFrom, dmPolicy } = account.config;
     
-    const isAllowedSender = allowFrom.some((sender) => 
+    // Check correct allowlist based on message type
+    const relevantAllowFrom = msg.isGroup ? groupAllowFrom : allowFrom;
+    const isAllowedSender = relevantAllowFrom.some((sender) => 
       normalizeHandle(sender) === msg.senderId
     );
     
