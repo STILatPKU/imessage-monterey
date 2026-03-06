@@ -7,6 +7,18 @@ A native OpenClaw channel plugin for iMessage on macOS 12 Monterey.
 >
 > It currently works on macOS 12.7.6. Use at one's own risk.
 
+## Capabilities
+
+| Feature | Supported |
+|---------|-----------|
+| Direct Messages (DMs) | ✅ |
+| Group Chats | ✅ |
+| Text Messages | ✅ |
+| Tool/Function Calling | ✅ |
+| Media Attachments | ❌ |
+| Reactions | ❌ |
+| Reply/Thread | ❌ |
+
 ## Why This Plugin?
 
 macOS 12 Monterey doesn't have the `imsg` CLI tool (requires macOS 14+). This plugin enables iMessage support by:
@@ -144,6 +156,23 @@ openclaw gateway restart
 | `pollIntervalMs` | number | 10000 | Poll interval in milliseconds |
 | `textChunkLimit` | number | 4000 | Max chars per message |
 
+## Tool Support
+
+This plugin supports models that use tool calling (function calling):
+
+- Tool calls are handled automatically in a loop (up to 10 iterations)
+- Tool results are delegated to the agent runtime
+- Works with any model that supports OpenAI-compatible tool calling
+
+No additional configuration is required.
+
+## Conversation Context
+
+The plugin maintains proper conversation context for both DMs and group chats:
+
+- **DMs**: Session keyed by sender phone number (`agent:main:imessage-monterey:direct:{senderId}`)
+- **Groups**: Session keyed by chat GUID (`agent:main:imessage-monterey:group:{chatGuid}`)
+
 ## Admin Slash Commands
 
 Send these commands from an admin number:
@@ -174,7 +203,7 @@ Send these commands from an admin number:
 | `/logs [n]` | Show last n log lines |
 | `/config get/set` | Manage configuration |
 | `/allowlist add/remove/list` | Manage allowlist |
-| `/reset [session]` | Reset session |
+| `/reset` | Reset conversation context (clears history, processed IDs, preferences) |
 | `/abort` | Abort active run |
 | `/version` | Show OpenClaw version |
 
@@ -198,6 +227,17 @@ This is prevented by the `is_from_me = 1` filter in provider.ts. If this happens
 
 ### AppleScript Errors
 Special characters (quotes, newlines, etc.) can break AppleScript. The plugin uses a temp file approach to handle this.
+
+## Limitations
+
+### Media Sending Not Supported
+
+Media attachments (images, videos, files) cannot be sent via this plugin. This is a limitation of macOS 12 Monterey:
+
+- Messages.app AppleScript dictionary does not expose attachment sending
+- GUI automation would be required (unreliable, requires Accessibility permissions)
+
+**Workaround:** For media sharing, use the Messages app directly.
 
 ## File Locations
 

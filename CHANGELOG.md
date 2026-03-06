@@ -2,6 +2,12 @@
 
 All notable changes to the iMessage Monterey plugin.
 
+## [1.0.1] - 2026-03-07
+
+### Fixed
+- Use gateway sessions.reset API for proper /reset command behavior
+- Add conversation context and tool_calls handling for proper message tracking
+
 ## [1.0.0] - 2026-02-21
 
 ### Added

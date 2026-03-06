@@ -55,6 +55,10 @@ imessage-monterey/
 - Filters messages based on security policy
 - Delivers inbound messages to Gateway
 
+**Session Key Format:** `agent:{agentId}:imessage-monterey:{chatType}:{peerId}`
+- Session key passed via `x-openclaw-session-key` header
+- Tool call handling with iteration loop (max 10 iterations)
+
 **Key Features:**
 - `ProcessedIdTracker` class - Persistent ID tracking
 - `IMessageMontereyProvider` class - Main polling logic
@@ -84,22 +88,36 @@ imessage-monterey/
   - `setup` - Configuration wizard
 
 #### 5. Admin Commands (`src/admin-commands.ts`)
-- Handles special admin commands sent via iMessage
-- Provides runtime configuration and diagnostics
-- Supports session-based preferences for users
-- Commands are triggered by specific message patterns
+Handles special admin commands sent via iMessage for runtime configuration and diagnostics.
 
-**Implemented Commands:**
-- `!prefs` / `!preferences` - Show current session preferences
-- `!history on|off` - Enable/disable conversation history
-- `!model <model>` - Change AI model for this session
-- `!web on|off` - Enable/disable web search access
-- `!status` - Show plugin status and health
+**Command Types:**
+- `/` slash commands — Primary, recommended syntax
+- `!` bang commands — Legacy support for backward compatibility
+
+**Slash Commands:**
+- `/prefs` — Show current session preferences
+- `/history on|off` — Enable/disable conversation history
+- `/model <model>` — Change AI model for this session
+- `/web on|off` — Enable/disable web search access
+- `/status` — Show plugin status and health
+- `/reset` — Reset conversation context for current session
+
+**`/reset` Implementation:**
+Uses Gateway API to clear conversation memory:
+1. Identifies current session from message context
+2. Calls Gateway `/v1/session/reset` endpoint
+3. Clears message history while preserving session preferences
+4. Confirms reset to user
 
 **Session Preferences Persistence:**
 - User preferences are stored per chat/session
 - Settings persist for the duration of the Gateway session
 - Includes model selection, web access toggle, history toggle
+
+#### 6. HTTP Delivery Layer
+- Messages delivered via HTTP to Gateway `/v1/chat/completions`
+- Session key header enables conversation context
+- Tool call iteration loop for multi-step responses
 
 ## Security Model
 

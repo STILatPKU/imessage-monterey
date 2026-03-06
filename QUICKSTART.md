@@ -173,6 +173,33 @@ openclaw gateway restart
 openclaw plugins list
 ```
 
+## Admin Commands
+
+The following admin commands can be sent to the bot:
+
+### `/reset` - Clear conversation history
+
+Send `/reset` to start a fresh conversation. This clears:
+- Session context (conversation history)
+- Processed message IDs
+- Session preferences
+
+**Example:** 
+```
+/reset
+```
+
+The bot will confirm the reset was successful.
+
+## Model Compatibility
+
+All OpenClaw models work with this plugin, including:
+- Standard chat models (GLM-5, Kimi, etc.)
+- Tool-using models (for function calling capabilities)
+- Reasoning models
+
+No special configuration needed.
+
 ## Security Best Practices
 
 1. **Use allowlist** - Don't use `dmPolicy: "open"` unless necessary
