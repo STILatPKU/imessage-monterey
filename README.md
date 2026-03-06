@@ -2,6 +2,11 @@
 
 A native OpenClaw channel plugin for iMessage on macOS 12 Monterey.
 
+> [!WARNING]
+> **This project is built by OpenClaw agent WITHOUT human review**.
+>
+> It currently works on macOS 12.7.6. Use at one's own risk.
+
 ## Why This Plugin?
 
 macOS 12 Monterey doesn't have the `imsg` CLI tool (requires macOS 14+). This plugin enables iMessage support by:
