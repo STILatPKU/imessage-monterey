@@ -1,0 +1,56 @@
+{
+  "_comment": "Example OpenClaw configuration for iMessage Monterey plugin",
+  
+  "channels": {
+    "imessage-monterey": {
+      "enabled": true,
+      
+      "_comment_dbPath": "Path to Messages database. Leave empty to use default ~/Library/Messages/chat.db",
+      "dbPath": "",
+      
+      "_comment_prefix": "Optional command prefix. Set to '!claw' to require prefix for all commands",
+      "prefix": "",
+      
+      "_comment_pollIntervalMs": "How often to check for new messages (milliseconds). Default: 10000 (10s)",
+      "pollIntervalMs": 10000,
+      
+      "_comment_requirePrefixForAllowlist": "If true, even allowlisted senders must use the prefix",
+      "requirePrefixForAllowlist": false,
+      
+      "_comment_dmPolicy": "Direct message security: 'open', 'pairing', 'allowlist', or 'disabled'",
+      "dmPolicy": "allowlist",
+      
+      "_comment_allowFrom": "List of allowed phone numbers or emails for DMs when dmPolicy is 'allowlist'",
+      "allowFrom": [
+        "+1234567890",
+        "user@example.com"
+      ],
+      
+      "_comment_groupPolicy": "Group message security: 'open', 'allowlist', or 'disabled'",
+      "groupPolicy": "allowlist",
+      
+      "_comment_groupAllowFrom": "List of allowed senders in group chats",
+      "groupAllowFrom": [
+        "+1234567890"
+      ],
+      
+      "_comment_textChunkLimit": "Maximum characters per message chunk (iMessage has limits)",
+      "textChunkLimit": 4000,
+      
+      "_comment_mediaMaxMb": "Maximum media file size in MB",
+      "mediaMaxMb": 16,
+      
+      "_comment_includeAttachments": "Whether to include message attachments in context",
+      "includeAttachments": true,
+      
+      "_comment_accounts": "For multi-account setups (rarely needed for iMessage)",
+      "accounts": {
+        "personal": {
+          "enabled": true,
+          "name": "Personal",
+          "allowFrom": ["+1234567890"]
+        }
+      }
+    }
+  }
+}

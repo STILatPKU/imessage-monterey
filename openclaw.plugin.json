@@ -1,0 +1,64 @@
+{
+  "id": "imessage-monterey",
+  "name": "iMessage (macOS 12 Monterey)",
+  "description": "iMessage channel plugin for macOS 12 Monterey using direct database polling",
+  "version": "1.0.0",
+  "channels": ["imessage-monterey"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "pollIntervalMs": {
+        "type": "number",
+        "description": "Database polling interval in milliseconds",
+        "default": 10000
+      },
+      "dbPath": {
+        "type": "string",
+        "description": "Path to Messages database (chat.db)"
+      },
+      "prefix": {
+        "type": "string",
+        "description": "Command prefix (e.g., '!claw')",
+        "default": ""
+      },
+      "requirePrefixForAllowlist": {
+        "type": "boolean",
+        "description": "Whether allowlisted senders need to use prefix",
+        "default": false
+      },
+      "textChunkLimit": {
+        "type": "number",
+        "description": "Maximum characters per message chunk",
+        "default": 4000
+      },
+      "mediaMaxMb": {
+        "type": "number",
+        "description": "Maximum media file size in MB",
+        "default": 16
+      }
+    }
+  },
+  "uiHints": {
+    "pollIntervalMs": {
+      "label": "Poll Interval (ms)",
+      "help": "How often to check for new messages (default: 10000ms)"
+    },
+    "dbPath": {
+      "label": "Messages Database Path",
+      "placeholder": "~/Library/Messages/chat.db"
+    },
+    "prefix": {
+      "label": "Command Prefix",
+      "placeholder": "!claw",
+      "help": "Optional prefix required to trigger the bot"
+    },
+    "requirePrefixForAllowlist": {
+      "label": "Require Prefix for Allowlisted Senders"
+    },
+    "textChunkLimit": {
+      "label": "Text Chunk Limit",
+      "help": "Maximum characters per message (iMessage has limits)"
+    }
+  }
+}

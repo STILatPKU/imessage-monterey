@@ -1,0 +1,46 @@
+{
+  "name": "@openclaw/imessage-monterey",
+  "version": "1.0.0",
+  "description": "iMessage channel plugin for macOS 12 Monterey - enables iMessage support without imsg CLI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "deploy": "npm run build && cp -r dist/src ~/.openclaw/extensions/imessage-monterey/dist/ && cp index.ts ~/.openclaw/extensions/imessage-monterey/"
+  },
+  "keywords": [
+    "openclaw",
+    "imessage",
+    "monterey",
+    "macos",
+    "channel",
+    "plugin"
+  ],
+  "author": "OpenClaw",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openclaw/openclaw"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0",
+    "openclaw": "^2026.0.0"
+  },
+  "peerDependencies": {
+    "openclaw": "^2026.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": ["darwin"],
+  "openclaw": {
+    "channel": "imessage-monterey",
+    "requires": [
+      "macos 12 monterey",
+      "full disk access for IMessageHelper.app"
+    ]
+  }
+}
