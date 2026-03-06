@@ -68,13 +68,13 @@ imessage-monterey/
 #### 3. AppleScript Sender (`src/applescript.ts`)
 - Sends messages via `osascript` controlling Messages.app
 - Handles text chunking for long messages (4000 char limit)
-- Supports media attachments (file paths)
 - Includes error handling and retry logic
+
+**Note:** Media attachments are NOT supported on macOS 12 Monterey due to AppleScript limitations.
 
 **Key Functions:**
 - `sendTextMessage()` - Basic text sending
-- `sendChunkedMessage()` - Handles long messages
-- `sendMediaMessage()` - Attachment support
+- `sendChunkedMessage()` - Handles long messages with `forceSplitChunk()`
 - `checkMessagesApp()` - Health check
 
 #### 4. Channel Plugin (`src/channel.ts`)
@@ -242,9 +242,8 @@ Uses Gateway API to clear conversation memory:
       allowFrom: ["+1234567890", "user@example.com"],
       groupPolicy: "allowlist",
       groupAllowFrom: ["+1234567890"],
+      adminList: ["+1234567890"],
       textChunkLimit: 4000,
-      mediaMaxMb: 16,
-      includeAttachments: true,
     },
   },
 }
@@ -297,7 +296,6 @@ cd ~/.openclaw/workspace/imessage-monterey
 - [ ] Short text messages
 - [ ] Long messages (chunking)
 - [ ] Messages with newlines
-- [ ] Media attachments
 
 ### Security
 - [ ] DM allowlist working
@@ -317,7 +315,7 @@ cd ~/.openclaw/workspace/imessage-monterey
 2. **Reactions/Tapbacks:** Not supported via AppleScript
 3. **Edit/Unsend:** Not supported on macOS 12
 4. **Real-time:** 5-10s latency due to polling
-5. **Attachments:** Require file path access
+5. **Media Attachments:** Not supported - Messages.app AppleScript dictionary doesn't expose attachment sending on macOS 12
 
 ## Future Improvements
 
@@ -338,7 +336,7 @@ cd ~/.openclaw/workspace/imessage-monterey
 | macOS Version | 14+ Sonoma | 12+ Monterey |
 | Latency | <1s | ~5-10s |
 | Real-time | ✅ Yes | ❌ Polling |
-| Attachments | ✅ Yes | ✅ Yes |
+| Attachments | ✅ Yes | ❌ No |
 | Groups | ✅ Yes | ✅ Yes |
 | Read Receipts | ✅ Yes | ❌ No |
 | Reactions | ✅ Yes | ❌ No |
@@ -377,7 +375,7 @@ cd ~/.openclaw/workspace/imessage-monterey
 
 ---
 
-**Status:** PRODUCTION READY  
-**Version:** 1.0.0  
-**Date:** 2026-03-07  
+**Status:** PRODUCTION READY
+**Version:** 1.0.2
+**Date:** 2026-03-07
 **Built by:** Claw (OpenClaw Agent)

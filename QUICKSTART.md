@@ -90,7 +90,8 @@ openclaw gateway restart
       "dmPolicy": "allowlist",
       "allowFrom": ["+1234567890", "+9876543210"],
       "groupPolicy": "allowlist",
-      "groupAllowFrom": ["+1234567890"]
+      "groupAllowFrom": ["+1234567890"],
+      "adminList": ["+1234567890"]
     }
   }
 }

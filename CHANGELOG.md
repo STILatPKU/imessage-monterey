@@ -2,6 +2,16 @@
 
 All notable changes to the iMessage Monterey plugin.
 
+## [1.0.2] - 2026-03-07
+
+### Changed
+- Removed `mediaMaxMb` and `includeAttachments` from configSchema (media not supported on macOS 12)
+- Added `adminList` to configSchema for admin command authorization
+
+### Fixed
+- `chunkText()` now properly enforces character limit using `forceSplitChunk()`
+- Simplified tool call handling by removing unnecessary iteration loop
+
 ## [1.0.1] - 2026-03-07
 
 ### Fixed
