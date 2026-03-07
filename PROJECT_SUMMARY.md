@@ -57,7 +57,6 @@ imessage-monterey/
 
 **Session Key Format:** `agent:{agentId}:imessage-monterey:{chatType}:{peerId}`
 - Session key passed via `x-openclaw-session-key` header
-- Tool call handling with iteration loop (max 10 iterations)
 
 **Key Features:**
 - `ProcessedIdTracker` class - Persistent ID tracking
@@ -117,7 +116,6 @@ Uses Gateway API to clear conversation memory:
 #### 6. HTTP Delivery Layer
 - Messages delivered via HTTP to Gateway `/v1/chat/completions`
 - Session key header enables conversation context
-- Tool call iteration loop for multi-step responses
 
 ## Security Model
 

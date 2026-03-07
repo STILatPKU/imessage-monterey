@@ -196,7 +196,6 @@ The bot will confirm the reset was successful.
 
 All OpenClaw models work with this plugin, including:
 - Standard chat models (GLM-5, Kimi, etc.)
-- Tool-using models (for function calling capabilities)
 - Reasoning models
 
 No special configuration needed.

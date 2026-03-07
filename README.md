@@ -14,7 +14,6 @@ A native OpenClaw channel plugin for iMessage on macOS 12 Monterey.
 | Direct Messages (DMs) | ✅ |
 | Group Chats | ✅ (fixed in v1.0.3) |
 | Text Messages | ✅ |
-| Tool/Function Calling | ✅ |
 | Media Attachments | ❌ |
 | Reactions | ❌ |
 | Reply/Thread | ❌ |
@@ -155,16 +154,6 @@ openclaw gateway restart
 | `prefix` | string | "" | Required message prefix |
 | `pollIntervalMs` | number | 10000 | Poll interval in milliseconds |
 | `textChunkLimit` | number | 4000 | Max chars per message |
-
-## Tool Support
-
-This plugin supports models that use tool calling (function calling):
-
-- Tool calls are handled automatically in a loop (up to 10 iterations)
-- Tool results are delegated to the agent runtime
-- Works with any model that supports OpenAI-compatible tool calling
-
-No additional configuration is required.
 
 ## Conversation Context
 
