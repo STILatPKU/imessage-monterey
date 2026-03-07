@@ -29,6 +29,7 @@ print_usage() {
     echo "  check       Check prerequisites only (no installation)"
     echo "  install     Full installation (default)"
     echo "  build       Build only (no deployment)"
+    echo "  verify      Verify installation after deployment"
     echo "  clean       Remove build artifacts"
     echo ""
 }
@@ -168,22 +169,224 @@ build_plugin() {
     success "Plugin built"
 }
 
-# Deploy plugin
+# Deploy plugin to OpenClaw extensions directory
+# Uses Option B: openclaw.extensions in package.json
 deploy_plugin() {
     log "Deploying plugin..."
     
-    # Create extension directory
+    # Create extension directory structure
     mkdir -p "$EXT_DIR/dist/src"
     
-    # Copy compiled code
-    cp -r "$SCRIPT_DIR/dist/src/"* "$EXT_DIR/dist/src/"
+    # Copy compiled code to dist/
+    cp -r "$SCRIPT_DIR/dist/src/"* "$EXT_DIR/dist/src/" 2>/dev/null || true
     cp "$SCRIPT_DIR/dist/index.js" "$EXT_DIR/dist/"
     
-    # Copy required files
+    # Copy manifest
     cp "$SCRIPT_DIR/openclaw.plugin.json" "$EXT_DIR/"
-    cp "$SCRIPT_DIR/package.json" "$EXT_DIR/"
+    
+    # Create package.json with openclaw.extensions entry point
+    # This tells OpenClaw where to find the plugin entry point
+    if [ -f "$SCRIPT_DIR/package.json" ]; then
+        # Use Node.js to merge openclaw.extensions into package.json
+        node -e '
+const fs = require("fs");
+const pkg = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+pkg.openclaw = pkg.openclaw || {};
+pkg.openclaw.extensions = ["./dist/index.js"];
+fs.writeFileSync(process.argv[2], JSON.stringify(pkg, null, 2));
+' "$SCRIPT_DIR/package.json" "$EXT_DIR/package.json"
+    else
+        # Create minimal package.json with entry point
+        cat > "$EXT_DIR/package.json" << 'PKGEOF'
+{
+  "name": "imessage-monterey",
+  "version": "1.0.0",
+  "openclaw": {
+    "extensions": ["./dist/index.js"]
+  }
+}
+PKGEOF
+    fi
     
     success "Plugin deployed to $EXT_DIR"
+}
+
+# Verify plugin installation
+# Checks all requirements for OpenClaw to discover and load the plugin
+verify_installation() {
+    log "Verifying plugin installation..."
+    echo ""
+    
+    local errors=0
+    local warnings=0
+    
+    # Check 1: Extension directory exists
+    echo "1. Extension directory"
+    if [[ -d "$EXT_DIR" ]]; then
+        success "   Directory exists: $EXT_DIR"
+    else
+        error "   Directory missing: $EXT_DIR"
+        ((errors++))
+    fi
+    
+    # Check 2: Manifest file exists and is valid JSON
+    echo "2. Plugin manifest (openclaw.plugin.json)"
+    local manifest="$EXT_DIR/openclaw.plugin.json"
+    if [[ -f "$manifest" ]]; then
+        if node -e "JSON.parse(require('fs').readFileSync('$manifest'))" 2>/dev/null; then
+            success "   Manifest is valid JSON"
+            # Check required fields
+            if node -e "const m=JSON.parse(require('fs').readFileSync('$manifest'));if(!m.id||!m.name||!m.version)process.exit(1)" 2>/dev/null; then
+                success "   Required fields present (id, name, version)"
+            else
+                warn "   Missing required fields (id, name, or version)"
+                ((warnings++))
+            fi
+        else
+            error "   Manifest is not valid JSON"
+            ((errors++))
+        fi
+    else
+        error "   Manifest not found: $manifest"
+        ((errors++))
+    fi
+    
+    # Check 3: Entry point is discoverable
+    echo "3. Entry point discovery"
+    local entry_found=false
+    
+    # Option A: index.js at root
+    if [[ -f "$EXT_DIR/index.js" ]]; then
+        success "   Found: index.js at root"
+        entry_found=true
+    fi
+    
+    # Option B: package.json with openclaw.extensions
+    local pkg="$EXT_DIR/package.json"
+    if [[ -f "$pkg" ]]; then
+        if node -e "const p=JSON.parse(require('fs').readFileSync('$pkg'));if(p.openclaw&&p.openclaw.extensions&&p.openclaw.extensions.length>0)process.exit(0);process.exit(1)" 2>/dev/null; then
+            local entry=$(node -e "const p=JSON.parse(require('fs').readFileSync('$pkg'));console.log(p.openclaw.extensions[0])")
+            local entry_path="$EXT_DIR/$entry"
+            if [[ -f "$entry_path" ]]; then
+                success "   Found via openclaw.extensions: $entry"
+                entry_found=true
+            else
+                error "   openclaw.extensions points to missing file: $entry_path"
+                ((errors++))
+            fi
+        fi
+    fi
+    
+    # Option C: index.ts at root
+    if [[ -f "$EXT_DIR/index.ts" ]]; then
+        success "   Found: index.ts at root"
+        entry_found=true
+    fi
+    
+    if ! $entry_found; then
+        error "   No entry point found!"
+        error "   OpenClaw looks for one of:"
+        error "     - index.js at extension root"
+        error "     - index.ts at extension root"
+        error "     - openclaw.extensions in package.json"
+        ((errors++))
+    fi
+    
+    # Check 4: package.json exists
+    echo "4. Package configuration (package.json)"
+    if [[ -f "$pkg" ]]; then
+        success "   package.json exists"
+        if grep -q '"openclaw"' "$pkg" 2>/dev/null; then
+            success "   Contains openclaw configuration"
+        else
+            warn "   No openclaw configuration section"
+            ((warnings++))
+        fi
+    else
+        warn "   package.json not found (optional but recommended)"
+        ((warnings++))
+    fi
+    
+    # Check 5: Compiled plugin files
+    echo "5. Compiled plugin files"
+    local dist_index="$EXT_DIR/dist/index.js"
+    local dist_channel="$EXT_DIR/dist/src/channel.js"
+    
+    if [[ -f "$dist_index" ]]; then
+        success "   dist/index.js exists"
+    else
+        error "   dist/index.js missing"
+        ((errors++))
+    fi
+    
+    if [[ -f "$dist_channel" ]]; then
+        success "   dist/src/channel.js exists"
+    else
+        error "   dist/src/channel.js missing"
+        ((errors++))
+    fi
+    
+    # Check 6: Helper app
+    echo "6. Helper application"
+    local helper_app="$HOME_APPS/IMessageHelper.app"
+    local helper_binary="$helper_app/Contents/MacOS/imessage-helper"
+    
+    if [[ -d "$helper_app" ]]; then
+        success "   Helper app installed: $helper_app"
+        
+        if [[ -f "$helper_binary" ]]; then
+            success "   Binary exists"
+            
+            # Test if helper can access database
+            if "$helper_binary" check 2>&1 | grep -q '"ok"'; then
+                success "   Helper has database access"
+            else
+                warn "   Helper cannot access Messages database"
+                warn "   Grant Full Disk Access: System Preferences → Privacy → Full Disk Access"
+                ((warnings++))
+            fi
+        else
+            error "   Binary missing: $helper_binary"
+            ((errors++))
+        fi
+    else
+        error "   Helper app not installed: $helper_app"
+        ((errors++))
+    fi
+    
+    # Check 7: Helper app Info.plist
+    echo "7. Helper app configuration"
+    local helper_plist="$helper_app/Contents/Info.plist"
+    if [[ -f "$helper_plist" ]]; then
+        success "   Info.plist exists"
+        
+        if grep -q "com.openclaw.imessage-helper" "$helper_plist" 2>/dev/null; then
+            success "   Correct bundle identifier"
+        else
+            warn "   Unexpected bundle identifier"
+            ((warnings++))
+        fi
+    else
+        error "   Info.plist missing"
+        ((errors++))
+    fi
+    
+    # Summary
+    echo ""
+    echo "======================================"
+    if [[ $errors -eq 0 ]]; then
+        success "Verification passed with $warnings warning(s)"
+        echo ""
+        echo "Plugin is ready to use. Restart OpenClaw gateway:"
+        echo "  openclaw gateway restart"
+        return 0
+    else
+        error "Verification failed with $errors error(s) and $warnings warning(s)"
+        echo ""
+        echo "Fix the errors above and run again:"
+        echo "  ./install.sh install"
+        return 1
+    fi
 }
 
 # Show config example
@@ -294,6 +497,8 @@ case "${1:-install}" in
         build_plugin
         deploy_plugin
         echo ""
+        verify_installation
+        echo ""
         verify_config
         echo ""
         read -p "Restart OpenClaw gateway now? (y/n) " -n 1 -r
@@ -310,6 +515,9 @@ case "${1:-install}" in
         build_helper
         build_plugin
         success "Build complete"
+        ;;
+    verify)
+        verify_installation
         ;;
     clean)
         clean
