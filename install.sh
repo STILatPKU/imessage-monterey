@@ -89,6 +89,38 @@ check_messages_app() {
     fi
 }
 
+# Check Automation permission for AppleScript
+check_automation_permission() {
+    log "Checking Automation permission for Messages.app..."
+    
+    # Try to interact with Messages via AppleScript
+    local result
+    result=$(osascript -e '
+        tell application "Messages"
+            try
+                set targetService to 1st service whose service type = iMessage
+                return "ok"
+            on error errMsg
+                return "error: " & errMsg
+            end try
+        end tell
+    ' 2>&1)
+    
+    if [[ "$result" == *"Not authorized"* ]] || [[ "$result" == *"-1743"* ]]; then
+        error "Automation permission NOT granted"
+        echo ""
+        echo "Grant Automation permission:"
+        echo "  1. Open System Preferences → Privacy → Automation"
+        echo "  2. Find your terminal app (Terminal, iTerm, etc.)"
+        echo "  3. Enable the 'Messages' checkbox"
+        echo ""
+        return 1
+    fi
+    
+    success "Automation permission OK"
+    return 0
+}
+
 # Build Swift helper
 build_helper() {
     log "Building Swift helper..."
@@ -394,6 +426,29 @@ verify_installation() {
         ((errors++))
     fi
     
+    # Check 8: Automation permission
+    echo "8. Automation permission"
+    local auto_result
+    auto_result=$(osascript -e '
+        tell application "Messages"
+            try
+                set targetService to 1st service whose service type = iMessage
+                return "ok"
+            on error errMsg
+                return "error: " & errMsg
+            end try
+        end tell
+    ' 2>&1)
+    
+    if [[ "$auto_result" == *"Not authorized"* ]] || [[ "$auto_result" == *"-1743"* ]]; then
+        error "   Automation permission NOT granted"
+        error "   Grant in: System Preferences → Privacy → Automation"
+        error "   Enable 'Messages' for your terminal app"
+        ((errors++))
+    else
+        success "   Automation permission OK"
+    fi
+    
     # Summary
     echo ""
     echo "======================================"
@@ -504,6 +559,7 @@ case "${1:-install}" in
         check_macos
         check_database
         check_messages_app
+        check_automation_permission
         echo ""
         success "Prerequisites OK"
         ;;
@@ -514,6 +570,7 @@ case "${1:-install}" in
         check_macos
         check_database
         check_messages_app
+        check_automation_permission
         build_helper
         install_helper
         test_helper

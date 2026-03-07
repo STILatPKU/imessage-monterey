@@ -51,13 +51,23 @@ Add this to your `~/.openclaw/openclaw.json`:
 
 ### Step 3: Grant Permissions
 
-The plugin needs Full Disk Access to read the Messages database:
+The plugin needs **TWO permissions** to work:
+
+#### 3a. Full Disk Access (for reading Messages database)
 
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Click **Full Disk Access** in the left sidebar
 3. Click the **lock** icon and authenticate
 4. Click **+** and add **IMessageHelper.app** from `~/Applications/`
 5. **Restart your terminal** (if needed)
+
+#### 3b. Automation (for sending messages via AppleScript)
+
+1. Open **System Preferences** → **Security & Privacy** → **Privacy**
+2. Click **Automation** in the left sidebar
+3. Find your terminal app (Terminal, iTerm, etc.)
+4. Enable the **Messages** checkbox
+5. **Restart your terminal**
 
 ### Step 4: Restart OpenClaw
 
@@ -135,7 +145,11 @@ Then send: `!claw What time is it?`
 
 ### "Database access denied"
 
-**Solution:** Grant Full Disk Access (Step 3 above)
+**Solution:** Grant Full Disk Access (Step 3a above)
+
+### "Not authorized to send Apple events" or "-1743"
+
+**Solution:** Grant Automation permission (Step 3b above)
 
 ### "Messages.app is not running"
 
