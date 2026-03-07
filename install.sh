@@ -74,7 +74,16 @@ check_messages_app() {
     log "Checking Messages.app..."
     
     if ! pgrep -x "Messages" > /dev/null; then
-        warn "Messages.app not running (messages may not send immediately)"
+        warn "Messages.app is not running!"
+        warn "The plugin can receive messages but CANNOT send replies."
+        warn "Keep Messages.app open for full functionality."
+        echo ""
+        read -p "Open Messages.app now? (y/n) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            open -a Messages
+            sleep 2
+        fi
     else
         success "Messages.app is running"
     fi
@@ -145,7 +154,12 @@ test_helper() {
         read -p "Press Enter after granting Full Disk Access..."
         
         if ! "$HOME_APPS/IMessageHelper.app/Contents/MacOS/imessage-helper" check 2>&1 | grep -q '"ok"'; then
-            error "Still cannot access database. Grant Full Disk Access and run again."
+            error "Still cannot access database."
+            echo ""
+            echo "After granting Full Disk Access in System Preferences:"
+            echo "  1. Close this terminal"
+            echo "  2. Open a new terminal"
+            echo "  3. Run: ./install.sh install"
             exit 1
         fi
     fi
@@ -166,6 +180,12 @@ build_plugin() {
     
     npm run build
     
+    # Verify build succeeded
+    if [[ ! -f "$SCRIPT_DIR/dist/index.js" ]]; then
+        error "Build failed - dist/index.js not found"
+        exit 1
+    fi
+    
     success "Plugin built"
 }
 
@@ -178,7 +198,10 @@ deploy_plugin() {
     mkdir -p "$EXT_DIR/dist/src"
     
     # Copy compiled code to dist/
-    cp -r "$SCRIPT_DIR/dist/src/"* "$EXT_DIR/dist/src/" 2>/dev/null || true
+    cp -r "$SCRIPT_DIR/dist/src/"* "$EXT_DIR/dist/src/" || {
+        error "Failed to copy plugin files"
+        exit 1
+    }
     cp "$SCRIPT_DIR/dist/index.js" "$EXT_DIR/dist/"
     
     # Copy manifest
@@ -498,8 +521,40 @@ case "${1:-install}" in
         deploy_plugin
         echo ""
         verify_installation
+        local install_ok=$?
         echo ""
         verify_config
+        local config_ok=$?
+        
+        if [[ $install_ok -ne 0 || $config_ok -ne 0 ]]; then
+            error "Installation incomplete. Fix issues above."
+            echo ""
+            echo "After fixing, run: ./install.sh install"
+            exit 1
+        fi
+        
+        # Pause-and-reverify loop for config
+        while [[ $config_ok -ne 0 ]]; do
+            echo ""
+            echo "Configuration is incomplete. Options:"
+            echo "  1) Edit config now and re-verify"
+            echo "  2) Skip and configure later"
+            read -p "Choice (1/2): " -n 1 choice
+            echo ""
+            case $choice in
+                1) 
+                    ${EDITOR:-nano} "$HOME/.openclaw/openclaw.json"
+                    verify_config
+                    config_ok=$?
+                    ;;
+                2) 
+                    warn "Configuration incomplete. Plugin will not work until configured."
+                    echo "Run ./install.sh install after fixing config."
+                    exit 1
+                    ;;
+            esac
+        done
+        
         echo ""
         read -p "Restart OpenClaw gateway now? (y/n) " -n 1 -r
         echo ""
