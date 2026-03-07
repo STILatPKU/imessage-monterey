@@ -172,9 +172,15 @@ build_plugin() {
 deploy_plugin() {
     log "Deploying plugin..."
     
-    mkdir -p "$EXT_DIR/dist"
-    cp -r "$SCRIPT_DIR/dist/src" "$EXT_DIR/dist/"
-    cp "$SCRIPT_DIR/index.ts" "$EXT_DIR/"
+    # Create extension directory
+    mkdir -p "$EXT_DIR/dist/src"
+    
+    # Copy compiled code
+    cp -r "$SCRIPT_DIR/dist/src/"* "$EXT_DIR/dist/src/"
+    cp "$SCRIPT_DIR/dist/index.js" "$EXT_DIR/dist/"
+    
+    # Copy required files
+    cp "$SCRIPT_DIR/openclaw.plugin.json" "$EXT_DIR/"
     cp "$SCRIPT_DIR/package.json" "$EXT_DIR/"
     
     success "Plugin deployed to $EXT_DIR"
@@ -185,23 +191,74 @@ show_config() {
     echo ""
     log "Configuration"
     echo ""
-    echo "Add this to ~/.openclaw/openclaw.json:"
+    echo "You need to add this to ~/.openclaw/openclaw.json:"
     echo ""
-    cat << 'JSON'
-{
-  "channels": {
-    "imessage-monterey": {
-      "enabled": true,
-      "dmPolicy": "pairing",
-      "groupPolicy": "allowlist",
-      "allowFrom": ["+1234567890"],
-      "adminList": ["+1234567890"]
-    }
-  }
+    echo '  "plugins": {'
+    echo '    "allow": ["imessage-monterey"]'
+    echo '  },'
+    echo '  "channels": {'
+    echo '    "imessage-monterey": {'
+    echo '      "enabled": true,'
+    echo '      "dmPolicy": "pairing",'
+    echo '      "groupPolicy": "allowlist",'
+    echo '      "allowFrom": ["+YOUR_PHONE_HERE"],'
+    echo '      "adminList": ["+YOUR_PHONE_HERE"]'
+    echo '    }'
+    echo '  }'
+    echo ""
+    echo "Replace +YOUR_PHONE_HERE with your phone number (e.g., +8613800138000)."
 }
-JSON
+
+# Verify config exists and is correct
+verify_config() {
+    local config_file="$HOME/.openclaw/openclaw.json"
+    local has_plugin=false
+    local has_channel=false
+    local warnings=()
+    
+    if [[ ! -f "$config_file" ]]; then
+        warn "OpenClaw config not found at $config_file"
+        show_config
+        return 1
+    fi
+    
+    # Check if imessage-monterey is in plugins.allow
+    if grep -q '"plugins"' "$config_file" 2>/dev/null; then
+        if grep -q '"allow".*"imessage-monterey"\|"imessage-monterey".*"allow"' "$config_file" 2>/dev/null; then
+            has_plugin=true
+        else
+            warnings+=("plugins.allow does not include imessage-monterey")
+        fi
+    else
+        warnings+=("plugins section not found")
+    fi
+    
+    # Check if there's a channel config for imessage-monterey
+    if grep -q '"imessage-monterey"' "$config_file" 2>/dev/null; then
+        if grep -A5 '"imessage-monterey"' "$config_file" | grep -q '"enabled"'; then
+            has_channel=true
+        else
+            warnings+=("imessage-monterey channel config incomplete")
+        fi
+    else
+        warnings+=("imessage-monterey channel not configured")
+    fi
+    
+    # Report results
+    if $has_plugin && $has_channel; then
+        success "Configuration looks good"
+        return 0
+    fi
+    
+    # Show warnings
     echo ""
-    echo "Replace +1234567890 with your phone number(s)."
+    warn "Configuration issues found:"
+    for w in "${warnings[@]}"; do
+        echo "  - $w"
+    done
+    
+    show_config
+    return 1
 }
 
 # Clean artifacts
@@ -236,7 +293,8 @@ case "${1:-install}" in
         test_helper
         build_plugin
         deploy_plugin
-        show_config
+        echo ""
+        verify_config
         echo ""
         read -p "Restart OpenClaw gateway now? (y/n) " -n 1 -r
         echo ""
