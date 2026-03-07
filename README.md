@@ -86,56 +86,57 @@ The OpenClaw channel plugin that:
 ### Prerequisites
 - macOS 12 Monterey
 - OpenClaw installed
-- Full Disk Access for IMessageHelper.app
+- Full Disk Access for IMessageHelper.app (see below)
 
-### Steps
+### Quick Install
 
-1. **Build the Swift Helper:**
+From the plugin directory:
+
 ```bash
-cd ~/.openclaw/workspace/imessage-monterey/helper
-swiftc -o imessage-helper Sources/main.swift -O -framework Cocoa -lsqlite3
+./install.sh install
 ```
 
-2. **Install Helper App:**
-```bash
-mkdir -p ~/Applications/IMessageHelper.app/Contents/MacOS
-cp imessage-helper ~/Applications/IMessageHelper.app/Contents/MacOS/
-```
+This will:
+- Build the Swift helper (`IMessageHelper.app`)
+- Install helper to `~/Applications/`
+- Install npm dependencies
+- Build the TypeScript plugin
+- Deploy to `~/.openclaw/extensions/imessage-monterey/`
 
-3. **Grant Full Disk Access:**
-   - System Preferences → Privacy → Full Disk Access
-   - Add `~/Applications/IMessageHelper.app`
+### Grant Full Disk Access
 
-4. **Build Plugin:**
-```bash
-cd ~/.openclaw/workspace/imessage-monterey
-npm install
-npm run build
-```
+After installation, grant Full Disk Access to the helper:
 
-5. **Deploy to OpenClaw:**
-```bash
-cp -r dist/* ~/.openclaw/extensions/imessage-monterey/dist/
-cp index.ts ~/.openclaw/extensions/imessage-monterey/
-```
+1. Open **System Preferences** → **Security & Privacy** → **Privacy**
+2. Click **Full Disk Access** in the left sidebar
+3. Click the **lock** icon and authenticate
+4. Click **+** and add **IMessageHelper.app** from `~/Applications/`
 
-6. **Configure:**
+### Configure
+
+Add to `~/.openclaw/openclaw.json`:
+
 ```json
-// ~/.openclaw/openclaw.json
 {
+  "plugins": {
+    "allow": ["imessage-monterey"]
+  },
   "channels": {
     "imessage-monterey": {
       "enabled": true,
       "dmPolicy": "pairing",
       "groupPolicy": "allowlist",
-      "allowFrom": ["+1234567890"],
-      "adminList": ["+1234567890"]
+      "allowFrom": ["+YOUR_PHONE"],
+      "adminList": ["+YOUR_PHONE"]
     }
   }
 }
 ```
 
-7. **Restart Gateway:**
+**Important:** The `plugins.allow` array is **required** for OpenClaw to load the plugin.
+
+### Restart Gateway
+
 ```bash
 openclaw gateway restart
 ```

@@ -30,18 +30,24 @@ Add this to your `~/.openclaw/openclaw.json`:
 
 ```json
 {
+  "plugins": {
+    "allow": ["imessage-monterey"]
+  },
   "channels": {
     "imessage-monterey": {
       "enabled": true,
-      "dmPolicy": "allowlist",
-      "allowFrom": ["+1234567890"],
-      "groupPolicy": "allowlist"
+      "dmPolicy": "pairing",
+      "groupPolicy": "allowlist",
+      "allowFrom": ["+YOUR_PHONE"],
+      "adminList": ["+YOUR_PHONE"]
     }
   }
 }
 ```
 
-**Replace `+1234567890` with your phone number.**
+**Important:** The `plugins.allow` array is **required** for OpenClaw to load the plugin.
+
+**Replace `+YOUR_PHONE` with your phone number** (e.g., `+14155551234`).
 
 ### Step 3: Grant Permissions
 
@@ -71,6 +77,9 @@ openclaw gateway restart
 
 ```json
 {
+  "plugins": {
+    "allow": ["imessage-monterey"]
+  },
   "channels": {
     "imessage-monterey": {
       "enabled": true,
@@ -84,6 +93,9 @@ openclaw gateway restart
 
 ```json
 {
+  "plugins": {
+    "allow": ["imessage-monterey"]
+  },
   "channels": {
     "imessage-monterey": {
       "enabled": true,
@@ -103,6 +115,9 @@ Require `!claw` prefix for all commands:
 
 ```json
 {
+  "plugins": {
+    "allow": ["imessage-monterey"]
+  },
   "channels": {
     "imessage-monterey": {
       "enabled": true,
