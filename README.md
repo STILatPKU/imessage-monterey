@@ -12,14 +12,10 @@ A native OpenClaw channel plugin for iMessage on macOS 12 Monterey.
 | Feature | Supported |
 |---------|-----------|
 | Direct Messages (DMs) | ✅ |
-| Group Chats | ✅ (fixed in v1.0.3) |
-| iMessages | ✅ |
-| SMS/MMS | ❌ (requires SIM card) |
+| Group Chats | ✅ |
 | Media Attachments | ❌ |
 | Reactions | ❌ |
 | Reply/Thread | ❌ |
-
-**Note:** This plugin only supports iMessages (Apple's messaging service). SMS/MMS messages require a cellular connection and SIM card, which macOS does not have.
 
 ## Why This Plugin?
 
