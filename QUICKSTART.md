@@ -7,26 +7,45 @@ Get iMessage working with OpenClaw on macOS 12 in 5 minutes.
 - macOS 12 Monterey or later
 - Messages.app signed in with iMessage
 - Node.js 18+ installed
-- Terminal with Full Disk Access (see step 3)
 
-## Installation
+## Quick Start
 
-### Step 1: Install the Plugin
+### Step 1: Run Installer
 
 ```bash
-cd ~/.openclaw/workspace/imessage-monterey
+git clone https://github.com/STILatPKU/imessage-monterey.git
+cd imessage-monterey
 ./install.sh install
 ```
 
-This will:
-- Check your system
-- Install dependencies
-- Build the plugin
-- Install to OpenClaw extensions
+The installer will:
+- Check your macOS version
+- Check Messages.app (offer to open if not running)
+- Prompt for **Automation permission** (needed to send messages)
+- Build and install the helper app
+- Prompt for **Full Disk Access** (needed to read database)
+- Build and deploy the plugin
+- Verify configuration
 
-### Step 2: Configure OpenClaw
+### Step 2: Grant Permissions When Prompted
 
-Add this to your `~/.openclaw/openclaw.json`:
+During install, you'll be prompted for TWO permissions:
+
+**a) Automation Permission**
+- When: After "Checking Automation permission..."
+- Where: System Preferences → Privacy → Automation
+- What: Enable "Messages" for Terminal
+
+**b) Full Disk Access**
+- When: After "Testing helper..."
+- Where: System Preferences → Privacy → Full Disk Access
+- What: Add `~/Applications/IMessageHelper.app`
+
+The installer will pause and wait for you to grant each permission.
+
+### Step 3: Configure OpenClaw
+
+Add to `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -45,41 +64,17 @@ Add this to your `~/.openclaw/openclaw.json`:
 }
 ```
 
-**Important:** The `plugins.allow` array is **required** for OpenClaw to load the plugin.
+The installer will verify this config and pause if it's incomplete.
 
-**Replace `+YOUR_PHONE` with your phone number** (e.g., `+14155551234`).
-
-### Step 3: Grant Permissions
-
-The plugin needs **TWO permissions** to work:
-
-#### 3a. Full Disk Access (for reading Messages database)
-
-1. Open **System Preferences** → **Security & Privacy** → **Privacy**
-2. Click **Full Disk Access** in the left sidebar
-3. Click the **lock** icon and authenticate
-4. Click **+** and add **IMessageHelper.app** from `~/Applications/`
-5. **Restart your terminal** (if needed)
-
-#### 3b. Automation (for sending messages via AppleScript)
-
-1. Open **System Preferences** → **Security & Privacy** → **Privacy**
-2. Click **Automation** in the left sidebar
-3. Find your terminal app (Terminal, iTerm, etc.)
-4. Enable the **Messages** checkbox
-5. **Restart your terminal**
-
-### Step 4: Restart OpenClaw
+### Step 4: Restart Gateway
 
 ```bash
 openclaw gateway restart
 ```
 
-### Step 5: Test It
+### Step 5: Test
 
-1. Send an iMessage from your iPhone to your Mac
-2. The message should appear in OpenClaw logs
-3. OpenClaw should respond based on your configuration
+Send a message from your phone to test!
 
 ## Configuration Options
 
@@ -145,11 +140,11 @@ Then send: `!claw What time is it?`
 
 ### "Database access denied"
 
-**Solution:** Grant Full Disk Access (Step 3a above)
+**Solution:** Grant Full Disk Access (Step 2b above)
 
 ### "Not authorized to send Apple events" or "-1743"
 
-**Solution:** Grant Automation permission (Step 3b above)
+**Solution:** Grant Automation permission (Step 2a above)
 
 ### "Messages.app is not running"
 
