@@ -559,7 +559,7 @@ verify_config() {
         else
             # Check if imessage-monterey is in plugins.allow
             if grep -q '"plugins"' "$config_file" 2>/dev/null; then
-                if grep -q '"allow".*"imessage-monterey"\|"imessage-monterey".*"allow"' "$config_file" 2>/dev/null; then
+                if tr -d '\n' < "$config_file" | grep -q '"allow"[^]]*"imessage-monterey"' 2>/dev/null; then
                     has_plugin=true
                 else
                     warnings+=("plugins.allow does not include imessage-monterey")
@@ -659,10 +659,10 @@ case "${1:-install}" in
         deploy_plugin
         echo ""
         verify_installation
-        local install_ok=$?
+        install_ok=$?
         echo ""
         verify_config
-        local config_ok=$?
+        config_ok=$?
         
         if [[ $install_ok -ne 0 || $config_ok -ne 0 ]]; then
             error "Installation incomplete. Fix issues above."
