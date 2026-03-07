@@ -69,56 +69,97 @@ check_database() {
     success "Database found at $db_path"
 }
 
-# Check Messages.app
+# Check Messages.app - with option to open and wait
 check_messages_app() {
     log "Checking Messages.app..."
     
-    if ! pgrep -x "Messages" > /dev/null; then
+    while ! pgrep -x "Messages" > /dev/null; do
         warn "Messages.app is not running!"
-        warn "The plugin can receive messages but CANNOT send replies."
-        warn "Keep Messages.app open for full functionality."
         echo ""
-        read -p "Open Messages.app now? (y/n) " -n 1 -r
+        echo "── MESSAGES.APP NOT RUNNING ──"
         echo ""
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            open -a Messages
-            sleep 2
-        fi
-    else
-        success "Messages.app is running"
-    fi
+        echo "The plugin can receive messages but CANNOT send replies."
+        echo "Keep Messages.app open for full functionality."
+        echo ""
+        echo "Options:"
+        echo "  1) Open Messages.app now"
+        echo "  2) Skip (sending will NOT work)"
+        echo "  3) Abort install"
+        read -p "Choice (1/2/3): " -n 1 choice
+        echo ""
+        
+        case $choice in
+            1)
+                open -a Messages
+                sleep 2
+                ;;  # Re-check the loop
+            2)
+                warn "Skipping. Plugin CANNOT SEND messages without Messages.app running."
+                return 1
+                ;;
+            3)
+                error "Install aborted"
+                exit 1
+                ;;
+        esac
+    done
+    
+    success "Messages.app is running"
+    return 0
 }
 
-# Check Automation permission for AppleScript
+# Check Automation permission for AppleScript - with loop to let user grant
 check_automation_permission() {
     log "Checking Automation permission for Messages.app..."
     
-    # Try to interact with Messages via AppleScript
-    local result
-    result=$(osascript -e '
-        tell application "Messages"
-            try
-                set targetService to 1st service whose service type = iMessage
-                return "ok"
-            on error errMsg
-                return "error: " & errMsg
-            end try
-        end tell
-    ' 2>&1)
-    
-    if [[ "$result" == *"Not authorized"* ]] || [[ "$result" == *"-1743"* ]]; then
+    while true; do
+        # Try to interact with Messages via AppleScript
+        local result
+        result=$(osascript -e '
+            tell application "Messages"
+                try
+                    set targetService to 1st service whose service type = iMessage
+                    return "ok"
+                on error errMsg
+                    return "error: " & errMsg
+                end try
+            end tell
+        ' 2>&1)
+        
+        if [[ "$result" != *"Not authorized"* ]] && [[ "$result" != *"-1743"* ]]; then
+            success "Automation permission OK"
+            return 0
+        fi
+        
         error "Automation permission NOT granted"
         echo ""
-        echo "Grant Automation permission:"
-        echo "  1. Open System Preferences → Privacy → Automation"
-        echo "  2. Find your terminal app (Terminal, iTerm, etc.)"
-        echo "  3. Enable the 'Messages' checkbox"
+        echo "── AUTOMATION PERMISSION REQUIRED ──"
         echo ""
-        return 1
-    fi
-    
-    success "Automation permission OK"
-    return 0
+        echo "1. Open System Preferences → Privacy → Automation"
+        echo "2. Find your terminal app (Terminal, iTerm, etc.)"
+        echo "3. Enable the 'Messages' checkbox"
+        echo ""
+        echo "Options:"
+        echo "  1) I've granted it - re-check"
+        echo "  2) Skip for now (plugin CANNOT SEND messages)"
+        echo "  3) Abort install"
+        read -p "Choice (1/2/3): " -n 1 choice
+        echo ""
+        
+        case $choice in
+            1)
+                continue  # Re-check
+                ;;
+            2)
+                warn "Skipping. Plugin CANNOT SEND messages without Automation permission."
+                return 1
+                ;;
+            3)
+                error "Install aborted"
+                exit 1
+                ;;
+        esac
+    done
 }
 
 # Build Swift helper
@@ -171,32 +212,45 @@ EOF
     success "Helper installed to $HOME_APPS/IMessageHelper.app"
 }
 
-# Test helper
+# Test helper - with loop to let user grant Full Disk Access
 test_helper() {
-    log "Testing helper..."
+    log "Testing helper database access..."
     
-    if ! "$HOME_APPS/IMessageHelper.app/Contents/MacOS/imessage-helper" check 2>&1 | grep -q '"ok"'; then
-        warn "Helper cannot access Messages database"
+    local helper_binary="$HOME_APPS/IMessageHelper.app/Contents/MacOS/imessage-helper"
+    
+    while ! "$helper_binary" check 2>&1 | grep -q '"ok"'; do
+        error "Helper cannot access Messages database"
         echo ""
-        echo "You need to grant Full Disk Access to IMessageHelper.app:"
-        echo "  1. Open System Preferences → Privacy → Full Disk Access"
-        echo "  2. Click the lock and authenticate"
-        echo "  3. Click + and add: $HOME_APPS/IMessageHelper.app"
+        echo "── FULL DISK ACCESS REQUIRED ──"
         echo ""
-        read -p "Press Enter after granting Full Disk Access..."
+        echo "1. Open System Preferences → Privacy → Full Disk Access"
+        echo "2. Click the lock and authenticate"
+        echo "3. Click + and add: $HOME_APPS/IMessageHelper.app"
+        echo "4. You may need to restart Terminal after granting"
+        echo ""
+        echo "Options:"
+        echo "  1) I've granted it - re-check"
+        echo "  2) Skip for now (plugin will NOT work)"
+        echo "  3) Abort install"
+        read -p "Choice (1/2/3): " -n 1 choice
+        echo ""
         
-        if ! "$HOME_APPS/IMessageHelper.app/Contents/MacOS/imessage-helper" check 2>&1 | grep -q '"ok"'; then
-            error "Still cannot access database."
-            echo ""
-            echo "After granting Full Disk Access in System Preferences:"
-            echo "  1. Close this terminal"
-            echo "  2. Open a new terminal"
-            echo "  3. Run: ./install.sh install"
-            exit 1
-        fi
-    fi
+        case $choice in
+            1)
+                continue  # Re-check
+                ;;
+            2)
+                warn "Skipping. Plugin will NOT work without Full Disk Access."
+                return 1
+                ;;
+            3)
+                error "Install aborted"
+                exit 1
+                ;;
+        esac
+    done
     
-    success "Helper can access database"
+    success "Helper has database access"
 }
 
 # Build TypeScript plugin
@@ -490,56 +544,83 @@ show_config() {
     echo "Replace +YOUR_PHONE_HERE with your phone number (e.g., +8613800138000)."
 }
 
-# Verify config exists and is correct
+# Verify config exists and is correct - with loop to let user fix
 verify_config() {
     local config_file="$HOME/.openclaw/openclaw.json"
-    local has_plugin=false
-    local has_channel=false
-    local warnings=()
     
-    if [[ ! -f "$config_file" ]]; then
-        warn "OpenClaw config not found at $config_file"
-        show_config
-        return 1
-    fi
-    
-    # Check if imessage-monterey is in plugins.allow
-    if grep -q '"plugins"' "$config_file" 2>/dev/null; then
-        if grep -q '"allow".*"imessage-monterey"\|"imessage-monterey".*"allow"' "$config_file" 2>/dev/null; then
-            has_plugin=true
+    while true; do
+        local has_plugin=false
+        local has_channel=false
+        local warnings=()
+        
+        if [[ ! -f "$config_file" ]]; then
+            warn "OpenClaw config not found at $config_file"
+            show_config
         else
-            warnings+=("plugins.allow does not include imessage-monterey")
+            # Check if imessage-monterey is in plugins.allow
+            if grep -q '"plugins"' "$config_file" 2>/dev/null; then
+                if grep -q '"allow".*"imessage-monterey"\|"imessage-monterey".*"allow"' "$config_file" 2>/dev/null; then
+                    has_plugin=true
+                else
+                    warnings+=("plugins.allow does not include imessage-monterey")
+                fi
+            else
+                warnings+=("plugins section not found")
+            fi
+            
+            # Check if there's a channel config for imessage-monterey
+            if grep -q '"imessage-monterey"' "$config_file" 2>/dev/null; then
+                if grep -A5 '"imessage-monterey"' "$config_file" | grep -q '"enabled"'; then
+                    has_channel=true
+                else
+                    warnings+=("imessage-monterey channel config incomplete")
+                fi
+            else
+                warnings+=("imessage-monterey channel not configured")
+            fi
+            
+            # Report results
+            if $has_plugin && $has_channel; then
+                success "Configuration looks good"
+                return 0
+            fi
+            
+            # Show warnings
+            echo ""
+            warn "Configuration issues found:"
+            for w in "${warnings[@]}"; do
+                echo "  - $w"
+            done
+            
+            show_config
         fi
-    else
-        warnings+=("plugins section not found")
-    fi
-    
-    # Check if there's a channel config for imessage-monterey
-    if grep -q '"imessage-monterey"' "$config_file" 2>/dev/null; then
-        if grep -A5 '"imessage-monterey"' "$config_file" | grep -q '"enabled"'; then
-            has_channel=true
-        else
-            warnings+=("imessage-monterey channel config incomplete")
-        fi
-    else
-        warnings+=("imessage-monterey channel not configured")
-    fi
-    
-    # Report results
-    if $has_plugin && $has_channel; then
-        success "Configuration looks good"
-        return 0
-    fi
-    
-    # Show warnings
-    echo ""
-    warn "Configuration issues found:"
-    for w in "${warnings[@]}"; do
-        echo "  - $w"
+        
+        # Give user options
+        echo ""
+        echo "── CONFIGURATION REQUIRED ──"
+        echo ""
+        echo "Options:"
+        echo "  1) Edit config now and re-verify"
+        echo "  2) Skip for now (plugin will not work)"
+        echo "  3) Abort install"
+        read -p "Choice (1/2/3): " -n 1 choice
+        echo ""
+        
+        case $choice in
+            1)
+                ${EDITOR:-nano} "$config_file"
+                continue  # Re-check
+                ;;
+            2)
+                warn "Skipping. Plugin will NOT work without proper configuration."
+                return 1
+                ;;
+            3)
+                error "Install aborted"
+                exit 1
+                ;;
+        esac
     done
-    
-    show_config
-    return 1
 }
 
 # Clean artifacts
@@ -589,28 +670,6 @@ case "${1:-install}" in
             echo "After fixing, run: ./install.sh install"
             exit 1
         fi
-        
-        # Pause-and-reverify loop for config
-        while [[ $config_ok -ne 0 ]]; do
-            echo ""
-            echo "Configuration is incomplete. Options:"
-            echo "  1) Edit config now and re-verify"
-            echo "  2) Skip and configure later"
-            read -p "Choice (1/2): " -n 1 choice
-            echo ""
-            case $choice in
-                1) 
-                    ${EDITOR:-nano} "$HOME/.openclaw/openclaw.json"
-                    verify_config
-                    config_ok=$?
-                    ;;
-                2) 
-                    warn "Configuration incomplete. Plugin will not work until configured."
-                    echo "Run ./install.sh install after fixing config."
-                    exit 1
-                    ;;
-            esac
-        done
         
         echo ""
         read -p "Restart OpenClaw gateway now? (y/n) " -n 1 -r
