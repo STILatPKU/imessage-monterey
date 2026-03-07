@@ -236,7 +236,7 @@ function cmdHelp(): AdminCommandResult {
 /status - Gateway status
 /agent [id] - List/switch agents
 /session [key] - List/switch sessions
-/model [name] - List/set model
+/model [list|get|set] - List/get/set model
 
 **Session Controls:**
 /think <off|minimal|low|medium|high>
@@ -336,23 +336,61 @@ function cmdSession(args: string[]): AdminCommandResult {
 }
 
 function cmdModel(args: string[]): AdminCommandResult {
+  const subCommand = args[0]?.toLowerCase();
+
   try {
-    if (args[0]) {
-      // Set model override
-      execSync(`openclaw config set model.override '${args[0]}' 2>&1`, { encoding: "utf-8", timeout: 5000 });
-      return {
-        ok: true,
-        response: `✅ Model override set: ${args[0]}`,
-        isAdmin: true,
-      };
-    } else {
-      // List models
+    if (!subCommand) {
+      // No args - list models
       const output = execSync("openclaw models list 2>&1", { encoding: "utf-8", timeout: 5000 });
       return {
         ok: true,
         response: `🔮 **Models**\n\`\`\`\n${output.slice(0, 2000)}\n\`\`\``,
         isAdmin: true,
       };
+    }
+
+    switch (subCommand) {
+      case "list":
+      case "ls":
+        const listOutput = execSync("openclaw models list 2>&1", { encoding: "utf-8", timeout: 5000 });
+        return {
+          ok: true,
+          response: `🔮 **Models**\n\`\`\`\n${listOutput.slice(0, 2000)}\n\`\`\``,
+          isAdmin: true,
+        };
+
+      case "get":
+      case "status":
+        const statusOutput = execSync("openclaw models status 2>&1", { encoding: "utf-8", timeout: 5000 });
+        return {
+          ok: true,
+          response: `🔮 **Model Status**\n\`\`\`\n${statusOutput.slice(0, 2000)}\n\`\`\``,
+          isAdmin: true,
+        };
+
+      case "set":
+        if (!args[1]) {
+          return {
+            ok: false,
+            response: "Usage: /model set <model-name>\nExample: /model set bailian/qwen3.5-plus",
+            isAdmin: true,
+          };
+        }
+        execSync(`openclaw models set '${args[1]}' 2>&1`, { encoding: "utf-8", timeout: 5000 });
+        return {
+          ok: true,
+          response: `✅ Model set: ${args[1]}`,
+          isAdmin: true,
+        };
+
+      default:
+        // Assume it's a model name for quick set (backward compat)
+        execSync(`openclaw models set '${subCommand}' 2>&1`, { encoding: "utf-8", timeout: 5000 });
+        return {
+          ok: true,
+          response: `✅ Model set: ${subCommand}`,
+          isAdmin: true,
+        };
     }
   } catch (error: any) {
     return {
