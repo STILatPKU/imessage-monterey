@@ -12,7 +12,7 @@ imessage-monterey/
 ├── openclaw.plugin.json         # Plugin manifest
 ├── package.json                 # NPM dependencies
 ├── tsconfig.json               # TypeScript configuration
-├── setup.sh                    # Installation/setup script
+├── install.sh                   # Installation script
 ├── config.example.json         # Example configuration
 ├── README.md                   # Full documentation
 ├── PROJECT_SUMMARY.md          # This file
@@ -252,7 +252,7 @@ Uses Gateway API to clear conversation memory:
 ### Automated (Recommended)
 ```bash
 cd ~/.openclaw/workspace/imessage-monterey
-./setup.sh install
+./install.sh install
 ```
 
 ### Manual
@@ -358,14 +358,14 @@ cd ~/.openclaw/workspace/imessage-monterey
 ✅ **Built:** Complete TypeScript plugin
 ✅ **Documented:** README, examples, inline comments
 ✅ **Tested:** Manual testing checklist provided
-✅ **Installed:** Can be installed via `setup.sh`
+✅ **Installed:** Can be installed via `./install.sh`
 ✅ **Configured:** Example config provided
 ✅ **Secure:** Security policies implemented
 ✅ **Robust:** Error handling throughout
 
 ## Next Steps for User
 
-1. **Install:** Run `./setup.sh install`
+1. **Install:** Run `./install.sh install`
 2. **Configure:** Add channel config to `openclaw.json`
 3. **Permissions:** Grant Full Disk Access
 4. **Test:** Send a test message

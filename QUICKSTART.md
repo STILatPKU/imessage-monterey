@@ -15,7 +15,7 @@ Get iMessage working with OpenClaw on macOS 12 in 5 minutes.
 
 ```bash
 cd ~/.openclaw/workspace/imessage-monterey
-./setup.sh install
+./install.sh install
 ```
 
 This will:
